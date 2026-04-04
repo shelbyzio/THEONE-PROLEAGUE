@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THE ONE | PRO LEAGUE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #000; color: #cbd5e1; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(220, 38, 38, 0.1); }
+        .tab-active { color: #ef4444; border-bottom: 3px solid #ef4444; }
+        
+        .snap-x { scroll-snap-type: x mandatory; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .snap-x::-webkit-scrollbar { display: none; }
+        .snap-center { scroll-snap-align: center; }
+
+        input[type=number] { -moz-appearance: textfield; font-size: 16px !important; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        #adminModal { backdrop-filter: blur(8px); }
+        
+        .sync-indicator { font-size: 10px; transition: opacity 0.3s; }
+        .syncing { color: #f59e0b; }
+        .synced { color: #10b981; }
+        .sync-error { color: #ef4444; }
+
+        .fixture-card { min-height: 120px; display: flex; flex-direction: column; justify-content: center; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        th, td { white-space: nowrap; }
+
+        /* Custom Scrollbar for desktop */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Admin Login Modal -->
+    <div id="adminModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 hidden px-4">
+        <div class="bg-gray-900 border border-red-900/50 p-6 rounded-2xl w-full max-w-xs shadow-2xl">
+            <div class="text-center mb-4">
+                <div class="bg-red-600/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-lock text-red-600"></i>
+                </div>
+                <h3 class="text-white font-bold text-sm">Admin Login</h3>
+            </div>
+            <input type="password" id="adminPass" placeholder="Password" class="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-center text-white mb-4 outline-none focus:border-red-600">
+            <div id="loginError" class="text-red-500 text-[10px] text-center mb-3 hidden">Password မှားယွင်းနေပါသည်။</div>
+            <div class="flex gap-2">
+                <button onclick="window.closeAdminModal()" class="flex-1 py-2.5 rounded-xl bg-gray-800 text-xs font-bold text-gray-400">Cancel</button>
+                <button onclick="window.verifyAdmin()" class="flex-1 py-2.5 rounded-xl bg-red-600 text-xs font-bold text-white">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-black/90 border-b border-red-900/50 px-4 py-3 flex justify-between items-center shadow-xl">
+        <div class="flex items-center gap-3">
+            <div class="bg-red-600 p-2 rounded-lg"><i class="fas fa-trophy text-black"></i></div>
+            <div>
+                <h1 class="font-black text-xl tracking-tighter text-white">THE ONE | PRO LEAGUE</h1>
+                <div id="syncStatus" class="sync-indicator opacity-0">
+                    <i id="syncIcon" class="fas fa-circle text-[6px]"></i> <span id="syncText">Syncing...</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex bg-gray-900 rounded-full p-1 border border-gray-800">
+            <button id="userBtn" onclick="window.toggleRole('user')" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-red-600 text-white">User</button>
+            <button id="adminBtn" onclick="window.requestAdmin()" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all text-gray-400">Admin</button>
+        </div>
+    </nav>
+
+    <!-- Main Tabs -->
+    <main class="max-w-6xl mx-auto p-4">
+        
+        <div class="flex gap-6 mb-6 border-b border-gray-800 sticky top-[60px] bg-black z-40 overflow-x-auto no-scrollbar">
+            <button onclick="window.setView('dashboard')" id="nav-dashboard" class="py-3 text-sm font-bold tab-active shrink-0">DASHBOARD</button>
+            <button onclick="window.setView('groups')" id="nav-groups" class="py-3 text-sm font-bold text-gray-500 shrink-0">GROUP STAGE</button>
+            <button onclick="window.setView('knockout')" id="nav-knockout" class="py-3 text-sm font-bold text-gray-500 shrink-0">KNOCKOUT</button>
+            <button onclick="window.setView('data')" id="nav-data" class="py-3 text-sm font-bold text-gray-500 shrink-0 hidden admin-only">DATA MODE</button>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="space-y-6">
+            <div class="bg-gradient-to-br from-red-900/40 to-black p-8 rounded-3xl border border-red-600/20">
+                <h2 class="text-2xl font-black text-white mb-4 italic uppercase">Tournament Status</h2>
+                <div class="flex items-center gap-4">
+                    <div class="flex-1 bg-gray-900 h-3 rounded-full overflow-hidden border border-white/5">
+                        <div id="progress-bar" class="bg-red-600 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                    <span id="progress-text" class="text-xs font-bold text-red-500">0%</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-white font-bold mb-4 uppercase text-xs tracking-widest border-l-4 border-red-600 pl-3">နောက်ဆုံးရလဒ်များ</h3>
+                    <div id="recent-list" class="space-y-3 text-xs"></div>
+                </div>
+                <div class="glass p-6 rounded-2xl flex flex-col items-center justify-center py-10 text-center">
+                    <p class="text-gray-500 text-xs font-bold uppercase mb-1 tracking-widest">စုစုပေါင်းပွဲစဉ် (Played)</p>
+                    <p id="match-count" class="text-5xl font-black text-white">0 / 72</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Groups View -->
+        <div id="view-groups" class="hidden space-y-16">
+            <div id="groups-container"></div>
+        </div>
+
+        <!-- DATA Mode View (Admin Only) -->
+        <div id="view-data" class="hidden space-y-6">
+            <div class="glass p-6 rounded-3xl border-red-600/30">
+                <h3 class="text-xl font-black text-white italic uppercase mb-4">Player Data Manager</h3>
+                <p class="text-gray-500 text-xs mb-6">Player/Team Name (၄၈) ခုကို တစ်ကြောင်းချင်းစီ ရိုက်ထည့်ပါ။ အလိုအလျောက် Fixture များ ထုတ်ပေးပါမည်။</p>
+                
+                <textarea id="playerInput" class="w-full h-64 bg-black border border-gray-800 rounded-2xl p-4 text-white text-sm outline-none focus:border-red-600 font-mono mb-6" placeholder="Player 1&#10;Player 2&#10;Player 3&#10;..."></textarea>
+                
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="window.autoGenerateTeams()" class="bg-red-600 hover:bg-red-700 text-white font-black text-sm px-8 py-4 rounded-2xl transition-all flex items-center gap-2">
+                        <i class="fas fa-magic"></i> GENERATE FIXTURES & GROUPS
+                    </button>
+                    <button onclick="window.clearAllData()" class="bg-gray-800 hover:bg-gray-700 text-gray-400 font-black text-sm px-8 py-4 rounded-2xl transition-all">
+                        CLEAR ALL DATA
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Knockout View -->
+        <div id="view-knockout" class="hidden">
+            <div class="text-center py-20 bg-gray-900/30 rounded-3xl border border-dashed border-gray-800">
+                <i class="fas fa-lock text-5xl text-red-900 mb-4"></i>
+                <h3 class="text-xl font-bold text-white uppercase italic">Knockout Stage Locked</h3>
+                <p class="text-gray-500 text-sm mt-2">အုပ်စုပွဲစဉ်အားလုံး (၇၂ ပွဲ) ပြီးဆုံးမှသာ Knockout Stage ကို တွက်ချက်နိုင်မည်ဖြစ်ပါသည်။</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZg4tnn8FIMZZF-dTVR8sUea7frnD7hVk",
+            authDomain: "theoneproleague-3f4a8.firebaseapp.com",
+            projectId: "theoneproleague-3f4a8",
+            storageBucket: "theoneproleague-3f4a8.firebasestorage.app",
+            messagingSenderId: "544447825938",
+            appId: "1:544447825938:web:bd083c4de59da1d61770cb"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'wc2026-ultimate-manager';
+        
+        let role = 'user';
+        let data = {
+            groups: Array.from({ length: 12 }, (_, i) => ({
+                id: String.fromCharCode(65 + i),
+                teams: Array.from({length: 4}, (_, j) => ({ 
+                    id: j, name: `Team ${i*4+j+1}`, p:0, w:0, d:0, l:0, gf:0, ga:0, pts:0 
+                })),
+                matches: [
+                    { t1Idx: 0, t2Idx: 1, s1: '', s2: '' },
+                    { t2Idx: 2, t2Idx: 3, s1: '', s2: '' },
+                    { t1Idx: 0, t2Idx: 2, s1: '', s2: '' },
+                    { t1Idx: 1, t2Idx: 3, s1: '', s2: '' },
+                    { t1Idx: 0, t2Idx: 3, s1: '', s2: '' },
+                    { t1Idx: 1, t2Idx: 2, s1: '', s2: '' }
+                ]
+            }))
+        };
+
+        // Initialize Matches Structure Correctly
+        const getFixtureIndices = () => [[0,1], [2,3], [0,2], [1,3], [0,3], [1,2]];
+
+        const showSync = (status) => {
+            const el = document.getElementById('syncStatus');
+            const icon = document.getElementById('syncIcon');
+            const text = document.getElementById('syncText');
+            if(!el) return;
+            el.classList.remove('opacity-0');
+            if (status === 'syncing') { 
+                text.innerText = 'Syncing...'; 
+                icon.className = 'fas fa-spinner fa-spin'; 
+                el.className = 'sync-indicator opacity-100 syncing'; 
+            } else if (status === 'synced') { 
+                text.innerText = 'Synced'; 
+                icon.className = 'fas fa-check-circle'; 
+                el.className = 'sync-indicator opacity-100 synced'; 
+                setTimeout(() => el.classList.add('opacity-0'), 2000); 
+            } else { 
+                text.innerText = 'Error'; 
+                icon.className = 'fas fa-times-circle'; 
+                el.className = 'sync-indicator opacity-100 sync-error'; 
+            }
+        };
+
+        const saveToCloud = async () => {
+            if (role !== 'admin') return;
+            showSync('syncing');
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tournamentState', 'latest'), { data, updatedAt: Date.now() });
+                showSync('synced');
+            } catch (e) { 
+                console.error(e);
+                showSync('error'); 
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { await signInAnonymously(auth); return; }
+            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'tournamentState', 'latest'), (snap) => {
+                if (snap.exists()) { 
+                    data = snap.data().data; 
+                    render(); 
+                }
+            });
+        });
+
+        window.toggleRole = (r) => {
+            role = r;
+            document.getElementById('userBtn').className = `px-4 py-1.5 rounded-full text-xs font-bold transition-all ${r === 'user' ? 'bg-red-600 text-white' : 'text-gray-400'}`;
+            document.getElementById('adminBtn').className = `px-4 py-1.5 rounded-full text-xs font-bold transition-all ${r === 'admin' ? 'bg-red-600 text-white' : 'text-gray-400'}`;
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', r !== 'admin'));
+            render();
+        };
+
+        window.requestAdmin = () => { if(role !== 'admin') document.getElementById('adminModal').classList.remove('hidden'); };
+        window.closeAdminModal = () => {
+            document.getElementById('adminModal').classList.add('hidden');
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('adminPass').value = '';
+        };
+        
+        window.verifyAdmin = () => {
+            if (document.getElementById('adminPass').value === "1234") { 
+                window.toggleRole('admin'); 
+                window.closeAdminModal(); 
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        };
+
+        window.setView = (v) => {
+            ['dashboard', 'groups', 'knockout', 'data'].forEach(id => {
+                const el = document.getElementById(`view-${id}`);
+                if(el) el.classList.add('hidden');
+                const btn = document.getElementById(`nav-${id}`);
+                if(btn) btn.className = 'py-3 text-sm font-bold text-gray-500 shrink-0';
+            });
+            document.getElementById(`view-${v}`).classList.remove('hidden');
+            document.getElementById(`nav-${v}`).className = 'py-3 text-sm font-bold tab-active shrink-0';
+        };
+
+        // --- Core Auto Generate Feature ---
+        window.autoGenerateTeams = () => {
+            const input = document.getElementById('playerInput').value;
+            const names = input.split('\n').map(n => n.trim()).filter(n => n !== '');
+            
+            const fixtureMap = getFixtureIndices();
+
+            data.groups = Array.from({ length: 12 }, (_, i) => {
+                const groupTeams = Array.from({length: 4}, (_, j) => {
+                    const name = names[i * 4 + j] || `Team ${i * 4 + j + 1}`;
+                    return { id: j, name, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+                });
+
+                const groupMatches = fixtureMap.map(pair => ({
+                    t1Idx: pair[0],
+                    t2Idx: pair[1],
+                    s1: '',
+                    s2: ''
+                }));
+
+                return {
+                    id: String.fromCharCode(65 + i),
+                    teams: groupTeams,
+                    matches: groupMatches
+                };
+            });
+            
+            render();
+            saveToCloud();
+            window.setView('groups');
+        };
+
+        window.clearAllData = () => {
+            if(!confirm("Data အားလုံးကို ဖျက်ပစ်ရန် သေချာပါသလား?")) return;
+            data.groups.forEach(g => {
+                g.teams.forEach((t, i) => {
+                    t.name = `Team ${i + 1}`;
+                    t.p = 0; t.w = 0; t.d = 0; t.l = 0; t.gf = 0; t.ga = 0; t.pts = 0;
+                });
+                g.matches.forEach(m => { m.s1 = ''; m.s2 = ''; });
+            });
+            document.getElementById('playerInput').value = '';
+            render();
+            saveToCloud();
+        };
+
+        window.updateTeamName = (gIdx, tIdx, newName) => {
+            if (role !== 'admin') return;
+            data.groups[gIdx].teams[tIdx].name = newName;
+            saveToCloud();
+        };
+
+        window.updateScore = (gIdx, mIdx, s1, s2) => {
+            if (role !== 'admin') return;
+            const match = data.groups[gIdx].matches[mIdx];
+            match.s1 = (s1 === '' || s1 === null) ? '' : parseInt(s1);
+            match.s2 = (s2 === '' || s2 === null) ? '' : parseInt(s2);
+            recalc(gIdx);
+            render();
+            saveToCloud();
+        };
+
+        function recalc(gIdx) {
+            const g = data.groups[gIdx];
+            // Reset Stats
+            g.teams.forEach(t => Object.assign(t, {p:0, w:0, d:0, l:0, gf:0, ga:0, pts:0}));
+            
+            // Re-calculate from matches
+            g.matches.forEach(m => {
+                if (m.s1 === '' || m.s2 === '' || m.s1 === null || m.s2 === null) return;
+                
+                const t1 = g.teams.find(t => t.id === m.t1Idx);
+                const t2 = g.teams.find(t => t.id === m.t2Idx);
+                if(!t1 || !t2) return;
+
+                const s1 = parseInt(m.s1);
+                const s2 = parseInt(m.s2);
+
+                t1.p++; t2.p++;
+                t1.gf += s1; t1.ga += s2;
+                t2.gf += s2; t2.ga += s1;
+
+                if (s1 > s2) { 
+                    t1.w++; t1.pts += 3; t2.l++; 
+                } else if (s1 < s2) { 
+                    t2.w++; t2.pts += 3; t1.l++; 
+                } else { 
+                    t1.d++; t2.d++; t1.pts += 1; t2.pts += 1; 
+                }
+            });
+
+            // Standard Tie-breaker: Pts -> GD -> GF
+            g.teams.sort((a,b) => {
+                if (b.pts !== a.pts) return b.pts - a.pts;
+                const gdA = a.gf - a.ga;
+                const gdB = b.gf - b.ga;
+                if (gdB !== gdA) return gdB - gdA;
+                return b.gf - a.gf;
+            });
+        }
+
+        function render() {
+            // Dashboard Progress
+            let totalPlayed = 0;
+            data.groups.forEach(g => g.matches.forEach(m => { 
+                if(m.s1 !== '' && m.s1 !== null && m.s2 !== '' && m.s2 !== null) totalPlayed++;
+            }));
+            
+            const progress = (totalPlayed / 72) * 100;
+            const pb = document.getElementById('progress-bar');
+            const pt = document.getElementById('progress-text');
+            const mc = document.getElementById('match-count');
+            
+            if(pb) pb.style.width = `${progress}%`;
+            if(pt) pt.innerText = `${Math.round(progress)}%`;
+            if(mc) mc.innerText = `${totalPlayed} / 72`;
+
+            // Groups Content
+            const container = document.getElementById('groups-container');
+            if(!container) return;
+
+            container.innerHTML = data.groups.map((g, gIdx) => {
+                // Split matches into 3 pages for slider
+                const pages = [
+                    { title: 'Matches 1 & 2', matches: [ {idx: 0, d: g.matches[0]}, {idx: 1, d: g.matches[1]} ] },
+                    { title: 'Matches 3 & 4', matches: [ {idx: 2, d: g.matches[2]}, {idx: 3, d: g.matches[3]} ] },
+                    { title: 'Matches 5 & 6', matches: [ {idx: 4, d: g.matches[4]}, {idx: 5, d: g.matches[5]} ] }
+                ];
+
+                return `
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between px-2">
+                        <h3 class="text-3xl font-black text-white italic tracking-tighter">GROUP ${g.id}</h3>
+                        <div class="bg-red-600/10 text-red-500 px-4 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">Qualifying</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- Points Table -->
+                        <div class="lg:col-span-7 glass rounded-3xl overflow-hidden self-start">
+                            <div class="table-container">
+                                <table class="w-full text-[12px] text-left">
+                                    <thead class="bg-white/5 text-gray-500 uppercase font-black text-[10px]">
+                                        <tr>
+                                            <th class="p-4">Team Name</th>
+                                            <th class="p-4 text-center">P</th>
+                                            <th class="p-4 text-center">W</th>
+                                            <th class="p-4 text-center text-red-500">Pts</th>
+                                            <th class="p-4 text-center">GD</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-white/5">
+                                        ${g.teams.map(t => `
+                                            <tr class="hover:bg-white/5 transition-colors">
+                                                <td class="p-4 font-bold text-gray-200">
+                                                    ${role === 'admin' ? 
+                                                        `<input type="text" value="${t.name}" onchange="window.updateTeamName(${gIdx}, ${t.id}, this.value)" class="bg-transparent border-b border-gray-800 focus:border-red-500 outline-none w-32">` : 
+                                                        t.name}
+                                                </td>
+                                                <td class="p-4 text-center text-gray-400 font-mono">${t.p}</td>
+                                                <td class="p-4 text-center text-gray-400 font-mono">${t.w}</td>
+                                                <td class="p-4 text-center font-black text-white bg-red-600/5">${t.pts}</td>
+                                                <td class="p-4 text-center text-gray-400 font-mono">${t.gf - t.ga}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Fixtures Slider -->
+                        <div class="lg:col-span-5">
+                            <div class="snap-x flex gap-4 overflow-x-auto no-scrollbar pb-4">
+                                ${pages.map((page) => `
+                                    <div class="snap-center shrink-0 w-[90%] md:w-[80%] lg:w-full space-y-3">
+                                        <div class="text-[10px] font-black text-red-600 uppercase tracking-widest px-2">${page.title}</div>
+                                        ${page.matches.map((mObj) => {
+                                            const m = mObj.d, mIdx = mObj.idx;
+                                            const t1 = g.teams.find(t => t.id === m.t1Idx) || {name: '?'};
+                                            const t2 = g.teams.find(t => t.id === m.t2Idx) || {name: '?'};
+                                            return `
+                                                <div class="glass p-4 rounded-3xl border border-white/5 fixture-card">
+                                                    <div class="flex items-center justify-between gap-4">
+                                                        <div class="flex-1 text-center">
+                                                            <div class="w-10 h-10 bg-gray-800 rounded-full mx-auto mb-2 flex items-center justify-center font-black text-xs border border-white/10 uppercase">${t1.name.substring(0,2)}</div>
+                                                            <p class="text-[10px] font-black text-gray-300 truncate w-20 mx-auto">${t1.name}</p>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="number" value="${m.s1}" onchange="window.updateScore(${gIdx}, ${mIdx}, this.value, ${m.s2})" class="w-10 h-12 bg-black border border-white/10 rounded-xl text-center text-xl font-black text-white focus:border-red-600 outline-none" ${role==='user'?'readonly':''}>
+                                                            <span class="text-gray-700 font-black">-</span>
+                                                            <input type="number" value="${m.s2}" onchange="window.updateScore(${gIdx}, ${mIdx}, ${m.s1}, this.value)" class="w-10 h-12 bg-black border border-white/10 rounded-xl text-center text-xl font-black text-white focus:border-red-600 outline-none" ${role==='user'?'readonly':''}>
+                                                        </div>
+                                                        <div class="flex-1 text-center">
+                                                            <div class="w-10 h-10 bg-gray-800 rounded-full mx-auto mb-2 flex items-center justify-center font-black text-xs border border-white/10 uppercase">${t2.name.substring(0,2)}</div>
+                                                            <p class="text-[10px] font-black text-gray-300 truncate w-20 mx-auto">${t2.name}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('<div class="h-px bg-white/5 my-12"></div>');
+
+            // Recent Results on Dashboard
+            let recents = [];
+            data.groups.forEach(g => g.matches.forEach(m => { 
+                if(m.s1 !== '' && m.s1 !== null && m.s2 !== '' && m.s2 !== null) {
+                    const t1 = g.teams.find(t => t.id === m.t1Idx);
+                    const t2 = g.teams.find(t => t.id === m.t2Idx);
+                    recents.push({ t1: t1.name, t2: t2.name, s1: m.s1, s2: m.s2, g: g.id });
+                }
+            }));
+            
+            const recentContainer = document.getElementById('recent-list');
+            if(recentContainer) {
+                recentContainer.innerHTML = recents.slice(-4).reverse().map(m => `
+                    <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span class="text-[9px] font-black text-red-600">GROUP ${m.g}</span>
+                        <span class="font-bold text-gray-300 text-[10px]">${m.t1} <span class="text-white mx-1 font-black text-sm">${m.s1}-${m.s2}</span> ${m.t2}</span>
+                    </div>
+                `).join('') || '<p class="text-gray-600 text-center py-4 text-[10px]">ပွဲစဉ်ရလဒ်များ မရှိသေးပါ။</p>';
+            }
+        }
+
+        // Initial setup
+        render();
+    </script>
+</body>
+</html>
