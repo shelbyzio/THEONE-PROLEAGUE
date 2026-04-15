@@ -1,393 +1,428 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="my">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The One Community - UCL Master</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THE ONE PRO LEAGUE - RANDOMIZED KNOCKOUT</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        
+        :root {
+            --neon-red: #ff003c;
+            --neon-glow: rgba(255, 0, 60, 0.6);
+            --dark-bg: #050505;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--dark-bg); 
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .neon-text { text-shadow: 0 0 10px var(--neon-glow), 0 0 20px var(--neon-glow); }
+        .red-gradient { background: linear-gradient(135deg, #ff003c 0%, #9e0025 100%); }
+
+        .standing-table { font-size: 10px; width: 100%; border-collapse: separate; border-spacing: 0 4px; table-layout: fixed; }
+        .standing-table th { color: #666; font-size: 8px; text-transform: uppercase; padding: 8px 2px; text-align: center; }
+        .standing-table td { background: rgba(255,255,255,0.02); padding: 10px 2px; text-align: center; vertical-align: middle; }
+        
+        .col-player { width: 35%; text-align: left !important; padding-left: 8px !important; }
+        .col-stat { width: 8%; }
+        .col-pts { width: 12%; }
+
+        .standing-table tr td:first-child { border-radius: 8px 0 0 8px; }
+        .standing-table tr td:last-child { border-radius: 0 8px 8px 0; }
+
+        .score-box {
+            background: #000; width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; font-weight: 900; font-size: 13px;
+            border: 1px solid #222;
+        }
+
+        .score-win { color: #22c55e !important; border-color: rgba(34, 197, 94, 0.4) !important; }
+        .score-loss { color: #ef4444 !important; border-color: rgba(239, 68, 68, 0.4) !important; }
+        .score-draw { color: #eab308 !important; border-color: rgba(234, 179, 8, 0.4) !important; }
+
+        .glass-header {
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .active-round-btn {
+            background: var(--neon-red) !important;
+            color: white !important;
+            box-shadow: 0 0 10px var(--neon-glow);
+        }
+
+        .loading-overlay { position: fixed; inset: 0; background: #000; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+
+        .group-divider-text {
+            color: var(--neon-red);
+            text-shadow: 0 0 8px var(--neon-glow);
+            letter-spacing: 0.2em;
+        }
+    </style>
+</head>
+<body class="no-scrollbar pb-10">
+
+    <div id="loading-screen" class="loading-overlay">
+        <div class="flex flex-col items-center">
+            <div class="w-10 h-10 border-2 border-zinc-900 border-t-red-600 rounded-full animate-spin"></div>
+        </div>
+    </div>
+
+    <div id="admin-login-modal" class="fixed inset-0 z-[1000] flex items-center justify-center hidden bg-black/95 p-6">
+        <div class="bg-zinc-900 w-full max-w-xs rounded-[2rem] p-8 border border-white/5">
+            <h2 class="text-center font-black uppercase text-xs tracking-widest mb-6">Admin Verification</h2>
+            <input type="password" id="adminPasswordInput" class="w-full bg-black border border-zinc-800 rounded-xl p-4 text-center tracking-[1em] mb-4 outline-none focus:border-red-600" placeholder="••••">
+            <button onclick="attemptLogin()" class="w-full red-gradient rounded-xl p-4 font-black uppercase text-[10px]">Access Panel</button>
+            <button onclick="closeAdminLogin()" class="w-full mt-2 p-2 text-zinc-600 text-[9px] font-bold uppercase">Back</button>
+        </div>
+    </div>
+
+    <header class="glass-header sticky top-0 z-50 px-5 py-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 red-gradient rounded-lg flex items-center justify-center">
+                    <i class="fas fa-trophy text-white text-[10px]"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm font-black italic uppercase leading-none tracking-tight">THE ONE <span class="text-red-600">PRO LEAGUE</span></h1>
+                    <p class="text-[7px] text-zinc-500 font-bold tracking-[0.2em] uppercase">Official Website</p>
+                </div>
+            </div>
+            <div class="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+                <button onclick="showTab('user-view')" id="btn-user" class="px-4 py-2 rounded-lg text-[9px] font-black uppercase bg-red-600 text-white">View</button>
+                <button onclick="openAdminLogin()" id="btn-admin" class="px-4 py-2 rounded-lg text-[9px] font-black uppercase text-zinc-500">Admin</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="p-4">
+        <section id="admin-panel" class="tab-content space-y-6">
+            <div class="bg-zinc-900/50 rounded-3xl p-6 border border-white/5">
+                <h3 class="text-[10px] font-black uppercase text-red-600 mb-4 tracking-widest">Tournament Setup</h3>
+                <textarea id="teamInput" rows="4" class="w-full bg-black border border-zinc-800 rounded-2xl p-4 text-xs text-white mb-4 outline-none" placeholder="Paste 48 players names..."></textarea>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="generateTournamentData()" class="red-gradient p-4 rounded-xl text-[9px] font-black uppercase">Create Groups</button>
+                    <button id="admin-ko-btn" onclick="advanceToKnockout()" class="bg-zinc-800 p-4 rounded-xl text-[9px] font-black uppercase opacity-50 cursor-not-allowed" disabled>Start Knockout</button>
+                </div>
+                <p id="ko-hint" class="text-[8px] text-zinc-500 mt-2 italic text-center">Group stage အားလုံးပြီးမှ Knockout စနိုင်မည်</p>
+            </div>
+            <div id="admin-match-list" class="space-y-2 pb-10"></div>
+        </section>
+
+        <section id="user-view" class="tab-content active">
+            <div id="user-sub-tabs" class="flex bg-zinc-900 p-1 rounded-2xl border border-zinc-800 mb-6 hidden">
+                <button onclick="toggleUserSubTab('group')" id="sub-btn-group" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase bg-red-600">Group Stage</button>
+                <button onclick="toggleUserSubTab('knockout')" id="sub-btn-knock" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase text-zinc-500">Knockout</button>
+            </div>
+
+            <div id="group-stage-content">
+                <div class="flex space-x-2 overflow-x-auto no-scrollbar mb-6 pb-2">
+                    <button onclick="filterRound(1)" id="rd-1" class="flex-1 min-w-[100px] py-3 rounded-xl text-[10px] font-black uppercase bg-zinc-900 border border-white/5 active-round-btn">Round 1</button>
+                    <button onclick="filterRound(2)" id="rd-2" class="flex-1 min-w-[100px] py-3 rounded-xl text-[10px] font-black uppercase bg-zinc-900 border border-white/5 text-zinc-500">Round 2</button>
+                    <button onclick="filterRound(3)" id="rd-3" class="flex-1 min-w-[100px] py-3 rounded-xl text-[10px] font-black uppercase bg-zinc-900 border border-white/5 text-zinc-500">Round 3</button>
+                </div>
+
+                <div class="mb-10">
+                    <h3 class="text-[10px] font-black uppercase text-zinc-600 tracking-[0.3em] mb-4 pl-2">Current Fixtures</h3>
+                    <div id="user-fixture-list" class="space-y-4"></div>
+                </div>
+
+                <div>
+                    <h3 class="text-[10px] font-black uppercase text-zinc-600 tracking-[0.3em] mb-4 pl-2">Group Standings</h3>
+                    <div id="group-tables-container" class="space-y-6"></div>
+                </div>
+            </div>
+
+            <div id="knockout-content" class="hidden">
+                <div id="knockout-bracket" class="space-y-12"></div>
+            </div>
+        </section>
+    </main>
+
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDxbrWG3bQTqFiKNZ_8rLvMPeOOj3PTWJI",
-            authDomain: "the-one-community-a3a50.firebaseapp.com",
-            projectId: "the-one-community-a3a50",
-            storageBucket: "the-one-community-a3a50.firebasestorage.app",
-            messagingSenderId: "935304206770",
-            appId: "1:935304206770:web:66386d8e818f4625b1acab",
-            measurementId: "G-MN34Y0XN8J"
+            apiKey: "AIzaSyBO_TmNXPkY2-vvDtcP8j7YX6HU-8lRpV4",
+            authDomain: "theoneproleague.firebaseapp.com",
+            projectId: "theoneproleague",
+            appId: "1:983758717301:web:cac06eddc7160a2049133c"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const appId = 'the-one-community-v1';
+        const appId = "the-one-neon-v1"; 
 
-        window.state = {
-            isAdmin: false,
-            user: null,
-            teams: Array.from({length: 36}, (_, i) => ({ id: i, name: "" })), 
-            rounds: Array.from({length: 8}, (_, i) => ({ round: i + 1, matches: [] })),
-            knockout: { playoffs: [], r16: [], qf: [], sf: [], final: [] },
-            currentRound: 1,
-            activeTab: 'standing',
-            isLeagueStarted: false,
-            potr: {} 
-        };
+        let state = { teams: [], matches: [], koMatches: [], isKnockoutStarted: false, currentRound: 1, isAdminAuthenticated: false };
 
-        const getTournamentDoc = () => doc(db, 'tournaments', appId);
-
-        const saveToCloud = async () => {
-            if (!window.state.user || !window.state.isAdmin) return;
-            try {
-                await setDoc(getTournamentDoc(), {
-                    teams: window.state.teams,
-                    rounds: window.state.rounds,
-                    knockout: window.state.knockout,
-                    isLeagueStarted: window.state.isLeagueStarted,
-                    potr: window.state.potr,
-                    currentRound: window.state.currentRound
-                }, { merge: true });
-            } catch (e) { console.error(e); }
-        };
-
-        const startSync = async () => {
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    window.state.user = user;
-                    onSnapshot(getTournamentDoc(), (docSnap) => {
-                        if (docSnap.exists()) {
-                            const data = docSnap.data();
-                            Object.assign(window.state, data);
-                            refreshUI();
-                        }
-                    }, (err) => console.error(err));
-                }
-            });
-            await signInAnonymously(auth);
-        };
-
-        startSync();
-
-        // Updated Score Color Logic: Win=Emerald, Lose=Red, Draw=Yellow
-        window.getScoreColor = (s1, s2) => {
-            if (s1 === null || s2 === null) return 'text-zinc-500';
-            if (s1 > s2) return 'text-emerald-500'; // Winner (Green)
-            if (s1 < s2) return 'text-red-500';     // Loser (Red)
-            return 'text-yellow-500';              // Draw (Yellow)
-        };
-
-        window.refreshUI = () => {
-            const container = document.getElementById('content');
-            renderNav();
-            renderHeader();
-            if(window.state.activeTab === 'setup') renderSetup(container);
-            else if(window.state.activeTab === 'rounds') renderRounds(container);
-            else if(window.state.activeTab === 'standing') renderTable(container);
-            else if(window.state.activeTab === 'potr') renderPOTR(container);
-            else if(window.state.activeTab === 'knockout') renderKnockout(container);
-            document.getElementById('loader').style.display = 'none';
-        };
-
-        window.renderNav = () => {
-            const tabs = ['rounds', 'standing', 'knockout', 'potr', 'setup'];
-            const labels = ['Fixtures', 'Table', 'Knockout', 'POTR', 'Admin'];
-            document.getElementById('nav-bar').innerHTML = tabs.map((t, i) => {
-                if (t === 'setup' && !window.state.isAdmin) return '';
-                return `<button onclick="changeTab('${t}')" class="flex flex-col items-center gap-1 flex-1 transition-all ${window.state.activeTab === t ? 'text-red-500 scale-110' : 'text-zinc-500'}">
-                    <span class="text-[8px] font-bold uppercase tracking-tighter">${labels[i]}</span>
-                </button>`;
-            }).join('');
-        };
-
-        const renderTable = (container) => {
-            if(!window.state.isLeagueStarted) { container.innerHTML = `<div class="p-20 text-center opacity-30 italic">League Phase စတင်ရန် စောင့်ဆိုင်းနေပါသည်...</div>`; return; }
-            
-            let statsMap = {};
-            window.state.teams.forEach(t => statsMap[t.id] = { id: t.id, name: t.name || `Manager ${t.id+1}`, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 });
-            
-            window.state.rounds.forEach(r => {
-                r.matches.forEach(m => {
-                    if(m.hs !== null && m.as !== null) {
-                        const h = statsMap[m.h], a = statsMap[m.a];
-                        if(!h || !a) return;
-                        h.p++; a.p++; h.gf += m.hs; h.ga += m.as; a.gf += m.as; a.ga += m.hs;
-                        if(m.hs > m.as) { h.w++; h.pts += 3; a.l++; }
-                        else if(m.as > m.hs) { a.w++; a.pts += 3; h.l++; }
-                        else { h.d++; a.d++; h.pts += 1; a.pts += 1; }
-                        h.gd = h.gf - h.ga; a.gd = a.gf - a.ga;
+        onAuthStateChanged(auth, async (u) => {
+            if (!u) await signInAnonymously(auth);
+            else {
+                onSnapshot(doc(db, 'artifacts', appId, 'public', 'mainData'), (snap) => {
+                    if (snap.exists()) { 
+                        Object.assign(state, snap.data()); 
+                        renderAll(); 
                     }
+                    document.getElementById('loading-screen').style.display = 'none';
                 });
+            }
+        });
+
+        window.openAdminLogin = () => { if(state.isAdminAuthenticated) { showTab('admin-panel'); return; } document.getElementById('admin-login-modal').classList.remove('hidden'); };
+        window.closeAdminLogin = () => document.getElementById('admin-login-modal').classList.add('hidden');
+        window.attemptLogin = () => {
+            if(document.getElementById('adminPasswordInput').value === "1234") {
+                state.isAdminAuthenticated = true; closeAdminLogin(); showTab('admin-panel');
+            }
+        };
+
+        window.showTab = (id) => {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            const isA = id === 'admin-panel';
+            document.getElementById('btn-admin').className = isA ? "px-4 py-2 rounded-lg text-[9px] font-black uppercase bg-red-600 text-white" : "px-4 py-2 rounded-lg text-[9px] font-black uppercase text-zinc-500";
+            document.getElementById('btn-user').className = !isA ? "px-4 py-2 rounded-lg text-[9px] font-black uppercase bg-red-600 text-white" : "px-4 py-2 rounded-lg text-[9px] font-black uppercase text-zinc-500";
+        };
+
+        window.generateTournamentData = async () => {
+            const raw = document.getElementById('teamInput').value.split('\n').filter(n => n.trim() !== "");
+            if (raw.length !== 48) return alert("ကျေးဇူးပြု၍ Player နာမည် ၄၈ ခု ထည့်ပေးပါ");
+            const gNames = "ABCDEFGHIJKL".split("");
+            const teams = raw.sort(() => Math.random() - 0.5).map((n, i) => ({ id: i + 1, name: n.trim(), p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, group: gNames[Math.floor(i / 4)] }));
+            const matches = []; let mId = 1;
+            gNames.forEach(g => {
+                const gt = teams.filter(t => t.group === g);
+                [[0,1],[2,3],[0,2],[1,3],[0,3],[1,2]].forEach((p, idx) => matches.push({id: mId++, round: Math.floor(idx/2)+1, group: g, home: gt[p[0]].id, away: gt[p[1]].id, hS: null, aS: null}));
+            });
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { teams, matches, koMatches: [], isKnockoutStarted: false });
+        };
+
+        window.updateScore = async (id, val, side, isKo) => {
+            const s = val === "" ? null : parseInt(val);
+            let targetM = isKo ? [...state.koMatches] : [...state.matches];
+            const m = targetM.find(x => x.id === id);
+            if(side === 'home') m.hS = s; else m.aS = s;
+            
+            let t = state.teams.map(x => ({...x, p:0, w:0, d:0, l:0, gf:0, ga:0, gd:0, pts:0}));
+            state.matches.forEach(match => {
+                if(match.hS !== null && match.aS !== null) {
+                    const h = t.find(x => x.id === match.home), a = t.find(x => x.id === match.away);
+                    h.p++; a.p++; h.gf += match.hS; h.ga += match.aS; a.gf += match.aS; a.ga += match.hS;
+                    if(match.hS > match.aS) { h.w++; h.pts+=3; a.l++; } else if(match.hS < match.aS) { a.w++; a.pts+=3; h.l++; } else { h.d++; a.d++; h.pts+=1; a.pts+=1; }
+                    h.gd = h.gf - h.ga; a.gd = a.gf - a.ga;
+                }
             });
 
-            const stats = Object.values(statsMap).filter(s => window.state.teams[s.id].name !== "").sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-
-            container.innerHTML = `
-                <div class="bg-zinc-900/40 rounded-3xl border border-white/5 overflow-hidden overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left min-w-[500px]">
-                        <thead>
-                            <tr class="text-[8px] uppercase font-black text-zinc-500 border-b border-white/5 bg-white/[0.02]">
-                                <th class="p-4 pl-6">Pos Manager</th>
-                                <th class="p-4 text-center">P</th><th class="p-4 text-center">W</th><th class="p-4 text-center">D</th>
-                                <th class="p-4 text-center">L</th><th class="p-4 text-center">GF</th><th class="p-4 text-center">GA</th><th class="p-4 text-center">GD</th><th class="p-4 text-center text-red-500">Pts</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${stats.map((s,i) => `
-                                <tr class="border-b border-white/[0.02] ${i < 8 ? 'bg-emerald-500/5' : (i < 24 ? 'bg-red-500/5' : '')}">
-                                    <td class="p-4 pl-6 flex items-center gap-3">
-                                        <span class="text-[9px] font-black ${i < 8 ? 'text-emerald-500' : (i < 24 ? 'text-red-500' : 'opacity-20')}">${i+1}</span>
-                                        <span class="text-xs font-bold text-zinc-200 truncate max-w-[100px]">${s.name}</span>
-                                    </td>
-                                    <td class="p-4 text-center text-zinc-400 text-[10px]">${s.p}</td>
-                                    <td class="p-4 text-center text-zinc-400 text-[10px]">${s.w}</td>
-                                    <td class="p-4 text-center text-zinc-400 text-[10px]">${s.d}</td>
-                                    <td class="p-4 text-center text-zinc-400 text-[10px]">${s.l}</td>
-                                    <td class="p-4 text-center text-zinc-500 text-[10px]">${s.gf}</td>
-                                    <td class="p-4 text-center text-zinc-500 text-[10px]">${s.ga}</td>
-                                    <td class="p-4 text-center font-bold text-[10px] ${s.gd>0?'text-emerald-500':s.gd<0?'text-red-400':'text-zinc-500'}">${s.gd}</td>
-                                    <td class="p-4 text-center font-black text-red-500 text-sm">${s.pts}</td>
-                                </tr>`).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        };
-
-        const renderPOTR = (container) => {
-            const rd = window.state.potr[window.state.currentRound] || { name: 'TBA', gf: 0, ga: 0, img: '' };
-            const gd = rd.gf - rd.ga;
-            
-            container.innerHTML = `
-                <div class="bg-zinc-900/80 p-6 rounded-[2.5rem] border border-white/5 text-center">
-                    <p class="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-6">Matchday ${window.state.currentRound} MVP</p>
-                    
-                    <div class="relative w-32 h-32 mx-auto mb-6">
-                        <div class="w-full h-full rounded-full bg-red-600/10 border-2 border-red-500/20 overflow-hidden flex items-center justify-center">
-                            ${rd.img ? `<img src="${rd.img}" class="w-full h-full object-cover">` : `<span class="text-4xl">🏆</span>`}
-                        </div>
-                        ${window.state.isAdmin ? `
-                            <label class="absolute bottom-0 right-0 w-10 h-10 bg-red-600 rounded-full border-4 border-black flex items-center justify-center cursor-pointer hover:scale-110 transition-all">
-                                📷 <input type="file" class="hidden" accept="image/*" onchange="handleImageUpload(event)">
-                            </label>` : ''}
-                    </div>
-
-                    <input type="text" placeholder="Manager Name" value="${rd.name}" onchange="updatePOTR('name', this.value)" ${!window.state.isAdmin?'readonly':''} 
-                        class="bg-transparent text-2xl font-black text-white text-center w-full outline-none mb-6">
-                    
-                    <div class="flex justify-center gap-4">
-                        <div class="bg-black/40 px-4 py-3 rounded-2xl border border-white/5 flex flex-col items-center">
-                            <span class="text-[7px] font-black text-zinc-500">GF</span>
-                            <input type="number" value="${rd.gf}" onchange="updatePOTR('gf', this.value)" ${!window.state.isAdmin?'readonly':''} class="bg-transparent w-8 text-center font-black text-lg text-emerald-500 outline-none">
-                        </div>
-                        <div class="bg-black/40 px-4 py-3 rounded-2xl border border-white/5 flex flex-col items-center">
-                            <span class="text-[7px] font-black text-zinc-500">GA</span>
-                            <input type="number" value="${rd.ga}" onchange="updatePOTR('ga', this.value)" ${!window.state.isAdmin?'readonly':''} class="bg-transparent w-8 text-center font-black text-lg text-red-500 outline-none">
-                        </div>
-                        <div class="bg-black/40 px-4 py-3 rounded-2xl border border-white/5 flex flex-col items-center">
-                            <span class="text-[7px] font-black text-zinc-500">GD</span>
-                            <span class="text-lg font-black ${gd>0?'text-emerald-500':gd<0?'text-red-500':'text-zinc-500'}">${gd > 0 ? '+'+gd : gd}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        };
-
-        const renderRounds = (container) => {
-            if(!window.state.isLeagueStarted) { container.innerHTML = `<div class="py-20 text-center opacity-40 italic">စတင်ခြင်း မရှိသေးပါ</div>`; return; }
-            const rIdx = window.state.currentRound - 1;
-            const r = window.state.rounds[rIdx] || { matches: [] };
-            
-            container.innerHTML = `
-                <div class="flex items-center justify-between mb-6 bg-zinc-900/50 p-2 rounded-2xl border border-white/5">
-                    <button onclick="moveRound(-1)" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5">←</button>
-                    <div class="text-center"><span class="text-sm font-black uppercase tracking-widest text-red-500">Matchday ${window.state.currentRound}</span></div>
-                    <button onclick="moveRound(1)" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5">→</button>
-                </div>
-                <div class="space-y-2">
-                    ${r.matches.length === 0 ? `<div class="py-10 text-center opacity-30 text-[10px]">ပွဲစဉ်များ မရှိသေးပါ</div>` : ''}
-                    ${r.matches.map((m, i) => {
-                        const hT = window.state.teams.find(t => t.id === m.h) || { name: 'TBA' };
-                        const aT = window.state.teams.find(t => t.id === m.a) || { name: 'TBA' };
-                        const hColor = getScoreColor(m.hs, m.as);
-                        const aColor = getScoreColor(m.as, m.hs);
-                        
-                        return `
-                        <div class="bg-zinc-900/40 p-3 rounded-2xl border border-white/5 flex items-center gap-3">
-                            <div class="flex-1 text-right font-bold text-[11px] truncate ${m.hs > m.as ? 'text-white' : 'text-zinc-400'}">${hT.name}</div>
-                            <div class="flex gap-1.5 items-center">
-                                <input type="number" value="${m.hs ?? ''}" onchange="updateScore(${rIdx}, ${i}, 'hs', this.value)" ${!window.state.isAdmin?'readonly':''} 
-                                    class="w-8 h-8 bg-black rounded-lg text-center font-black border border-white/10 ${hColor} outline-none transition-colors">
-                                <span class="opacity-10 text-[6px] font-black">VS</span>
-                                <input type="number" value="${m.as ?? ''}" onchange="updateScore(${rIdx}, ${i}, 'as', this.value)" ${!window.state.isAdmin?'readonly':''} 
-                                    class="w-8 h-8 bg-black rounded-lg text-center font-black border border-white/10 ${aColor} outline-none transition-colors">
-                            </div>
-                            <div class="flex-1 text-left font-bold text-[11px] truncate ${m.as > m.hs ? 'text-white' : 'text-zinc-400'}">${aT.name}</div>
-                            ${window.state.isAdmin ? `<button onclick="deleteMatch(${rIdx}, ${i})" class="text-[10px] text-red-500/30 hover:text-red-500 ml-2">×</button>` : ''}
-                        </div>`;
-                    }).join('')}
-                    ${window.state.isAdmin ? `<button onclick="addLeagueMatch(${rIdx})" class="w-full py-4 border border-dashed border-white/10 rounded-2xl text-[8px] font-black opacity-30 mt-4 uppercase">+ Add Match Manually</button>` : ''}
-                </div>
-            `;
-        };
-
-        const renderKnockout = (container) => {
-            const stages = [{ id: 'playoffs', label: 'Play-offs' }, { id: 'r16', label: 'Round of 16' }, { id: 'qf', label: 'Quarter' }, { id: 'sf', label: 'Semi' }, { id: 'final', label: 'Final' }];
-            container.innerHTML = `<div class="space-y-8">${stages.map(s => `
-                <div class="space-y-3">
-                    <h3 class="text-[9px] font-black uppercase text-red-500 tracking-[0.2em] pl-3 border-l-2 border-red-500">${s.label}</h3>
-                    <div class="grid gap-2">${renderKOList(s.id)}</div>
-                    ${window.state.isAdmin ? `<button onclick="addKOMatch('${s.id}')" class="w-full py-2 bg-white/5 border border-dashed border-white/10 rounded-xl text-[8px] font-bold opacity-30">+ Match</button>` : ''}
-                </div>`).join('')}</div>`;
-        };
-
-        const renderKOList = (stageId) => {
-            const matches = window.state.knockout[stageId] || [];
-            if (matches.length === 0) return `<p class="text-[8px] opacity-20 px-4">TBA</p>`;
-            return matches.map((m, idx) => {
-                const s1Color = getScoreColor(m.s1, m.s2);
-                const s2Color = getScoreColor(m.s2, m.s1);
-
-                return `
-                <div class="bg-zinc-900/60 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3">
-                    <div class="flex-1 space-y-1">
-                        <input type="text" value="${m.t1 || ''}" onchange="updateKOMatch('${stageId}', ${idx}, 't1', this.value)" ${!window.state.isAdmin?'readonly':''} class="w-full bg-transparent text-[11px] font-bold outline-none ${m.s1 > m.s2 ? 'text-white' : 'text-zinc-400'}">
-                        <input type="text" value="${m.t2 || ''}" onchange="updateKOMatch('${stageId}', ${idx}, 't2', this.value)" ${!window.state.isAdmin?'readonly':''} class="w-full bg-transparent text-[11px] font-bold outline-none ${m.s2 > m.s1 ? 'text-white' : 'text-zinc-400'}">
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <input type="number" value="${m.s1 ?? ''}" onchange="updateKOMatch('${stageId}', ${idx}, 's1', this.value)" ${!window.state.isAdmin?'readonly':''} 
-                            class="w-7 h-6 bg-black rounded text-center text-[10px] font-black border border-white/5 ${s1Color} outline-none">
-                        <input type="number" value="${m.s2 ?? ''}" onchange="updateKOMatch('${stageId}', ${idx}, 's2', this.value)" ${!window.state.isAdmin?'readonly':''} 
-                            class="w-7 h-6 bg-black rounded text-center text-[10px] font-black border border-white/5 ${s2Color} outline-none">
-                    </div>
-                    ${window.state.isAdmin ? `<button onclick="deleteKOMatch('${stageId}', ${idx})" class="text-red-500/30 ml-2">×</button>` : ''}
-                </div>`;
-            }).join('');
-        };
-
-        const renderSetup = (container) => {
-            container.innerHTML = `
-                <div class="space-y-6">
-                    <div class="bg-zinc-900/40 p-5 rounded-3xl border border-white/5">
-                        <h3 class="text-[10px] font-black uppercase text-red-500 mb-6">Registration</h3>
-                        <div class="grid gap-2 max-h-[50vh] overflow-y-auto pr-2 custom-scroll">
-                            ${window.state.teams.map(t => `<div class="flex items-center gap-3 bg-black/40 p-2 rounded-xl border border-white/5">
-                                <span class="text-[9px] w-6 opacity-30 font-black">${t.id+1}</span>
-                                <input type="text" value="${t.name || ''}" onblur="updateTeamName(${t.id}, this.value)" class="flex-1 bg-transparent text-sm font-bold outline-none">
-                            </div>`).join('')}
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="startLeague()" class="py-5 bg-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-red-600/20">Start Season</button>
-                        <button onclick="generateFixtures()" class="py-5 bg-emerald-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-600/20">Generate Fixtures</button>
-                    </div>
-                    <button onclick="resetTournament()" class="w-full py-3 bg-red-600/20 text-red-500 rounded-2xl font-black text-[9px] uppercase tracking-widest">Reset All Data</button>
-                </div>`;
-        };
-
-        window.generateFixtures = () => {
-            const activeTeams = window.state.teams.filter(t => t.name.trim() !== "");
-            if (activeTeams.length < 2) {
-                alert("Manager အနည်းဆုံး ၂ ဦး လိုအပ်ပါသည်");
-                return;
-            }
-            if (!confirm("Round 1 မှ 8 အထိ ပွဲစဉ်များကို Auto Generate လုပ်မလား? (ရှိပြီးသား ပွဲစဉ်များ ပျက်သွားပါလိမ့်မည်)")) return;
-
-            window.state.rounds = Array.from({length: 8}, (_, i) => ({ round: i + 1, matches: [] }));
-            
-            const teamIds = activeTeams.map(t => t.id);
-            if (teamIds.length % 2 !== 0) teamIds.push(null);
-
-            const numRounds = 8;
-            for (let r = 0; r < numRounds; r++) {
-                let matches = [];
-                let shuffled = [...teamIds].sort(() => Math.random() - 0.5);
-                for (let i = 0; i < shuffled.length; i += 2) {
-                    const h = shuffled[i];
-                    const a = shuffled[i+1];
-                    if (h !== null && a !== null) {
-                        matches.push({ h, a, hs: null, as: null });
-                    }
-                }
-                window.state.rounds[r].matches = matches;
+            if(isKo) {
+                targetM.forEach(m => { 
+                    if(m.hS !== null && m.aS !== null && m.nextMatch) { 
+                        const winner = m.hS >= m.aS ? m.home : m.away; 
+                        const nm = targetM.find(x => x.id === m.nextMatch); 
+                        if(m.nextPos === 'home') nm.home = winner; else nm.away = winner; 
+                    } 
+                });
             }
 
-            window.state.isLeagueStarted = true;
-            saveToCloud();
-            refreshUI();
-            alert("Matchday 1 to 8 Fixtures Generated!");
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { 
+                teams: t, 
+                matches: state.matches, 
+                koMatches: state.koMatches 
+            });
         };
 
-        window.handleImageUpload = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const cur = window.state.currentRound;
-                if(!window.state.potr[cur]) window.state.potr[cur] = { name: '', gf: 0, ga: 0, img: '' };
-                window.state.potr[cur].img = event.target.result;
-                saveToCloud();
-                refreshUI();
+        window.advanceToKnockout = async () => {
+            const gNames = "ABCDEFGHIJKL".split(""); 
+            const pot1 = []; // Group Winners
+            const pot2 = []; // Group Runners-up
+            const pot3 = []; // Best 3rd places
+
+            gNames.forEach(g => { 
+                const gt = state.teams.filter(t => t.group === g).sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf); 
+                pot1.push(gt[0]); 
+                pot2.push(gt[1]); 
+                pot3.push(gt[2]);
+            });
+
+            // အကောင်းဆုံး တတိယ ၈ သင်း ရွေးချယ်ခြင်း
+            const bestThirds = pot3.sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf).slice(0, 8);
+            
+            // Qualifiers အားလုံး စုစည်းခြင်း (32 သင်း)
+            const allQualifiers = [...pot1, ...pot2, ...bestThirds];
+            
+            // Random Shuffle with Group Avoidance Logic
+            // Round of 32 အတွက် မဲနှိုက်ခြင်း
+            let shuffled = [...allQualifiers].sort(() => Math.random() - 0.5);
+            
+            // Pairing Logic: Pot 1 vs (Pot 2/3) mostly random
+            const finalPairings = [];
+            const tempPot1 = [...pot1].sort(() => Math.random() - 0.5);
+            const tempRest = [...pot2, ...bestThirds].sort(() => Math.random() - 0.5);
+
+            for(let i=0; i<16; i++) {
+                let home = tempPot1.length > 0 ? tempPot1.pop() : tempRest.pop();
+                let awayIndex = tempRest.findIndex(t => t.group !== home.group);
+                
+                // အကယ်၍ အုပ်စုတူကစားသမားပဲ ကျန်တော့ရင် logic ကို bypass လုပ်ပြီး နောက်ဆုံးတစ်ယောက်ကို ယူလိုက်မယ်
+                if (awayIndex === -1) awayIndex = 0; 
+                
+                let away = tempRest.splice(awayIndex, 1)[0];
+                finalPairings.push({ home: home.id, away: away.id });
+            }
+
+            // Shuffle pairings to randomize bracket position
+            finalPairings.sort(() => Math.random() - 0.5);
+
+            const ko = [];
+            // R32
+            for(let i=0; i<16; i++) ko.push({ id: 100+i, stage: 'R32', home: finalPairings[i].home, away: finalPairings[i].away, hS: null, aS: null, nextMatch: 200 + Math.floor(i/2), nextPos: i%2===0?'home':'away'});
+            // R16
+            for(let i=0; i<8; i++) ko.push({ id: 200+i, stage: 'R16', home: null, away: null, hS: null, aS: null, nextMatch: 300 + Math.floor(i/2), nextPos: i%2===0?'home':'away'});
+            // QF
+            for(let i=0; i<4; i++) ko.push({ id: 300+i, stage: 'QF', home: null, away: null, hS: null, aS: null, nextMatch: 400 + Math.floor(i/2), nextPos: i%2===0?'home':'away'});
+            // SF
+            for(let i=0; i<2; i++) ko.push({ id: 400+i, stage: 'SF', home: null, away: null, hS: null, aS: null, nextMatch: 500, nextPos: i%2===0?'home':'away'});
+            // Final
+            ko.push({ id: 500, stage: 'Final', home: null, away: null, hS: null, aS: null });
+
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { koMatches: ko, isKnockoutStarted: true });
+        };
+
+        window.filterRound = (r) => { state.currentRound = r; renderAll(); };
+
+        function renderAll() {
+            const getResultClass = (s1, s2) => {
+                if (s1 === null || s2 === null) return 'text-zinc-500';
+                return s1 > s2 ? 'score-win' : (s1 < s2 ? 'score-loss' : 'score-draw');
             };
-            reader.readAsDataURL(file);
+
+            const groupDone = state.matches.length > 0 && state.matches.every(m => m.hS !== null && m.aS !== null);
+            const koBtn = document.getElementById('admin-ko-btn');
+            if(koBtn) {
+                if(groupDone && !state.isKnockoutStarted) {
+                    koBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    koBtn.classList.add('red-gradient');
+                    koBtn.disabled = false;
+                    document.getElementById('ko-hint').innerText = "Group stage ပြီးဆုံးပါပြီ။ Knockout စတင်နိုင်ပါသည်။";
+                } else if(state.isKnockoutStarted) {
+                    koBtn.innerText = "Knockout Started";
+                    koBtn.disabled = true;
+                    koBtn.classList.add('opacity-50');
+                }
+            }
+
+            document.getElementById('user-sub-tabs').classList.toggle('hidden', !state.isKnockoutStarted);
+
+            const adminList = document.getElementById('admin-match-list');
+            if(adminList) {
+                const data = state.isKnockoutStarted ? state.koMatches : state.matches;
+                adminList.innerHTML = data.map(m => `
+                    <div class="bg-zinc-950 p-4 rounded-2xl flex items-center justify-between border border-white/5">
+                        <span class="text-[8px] font-black text-zinc-600 w-8">${m.stage || 'G' + m.group}</span>
+                        <div class="flex-1 flex items-center justify-center space-x-2">
+                            <span class="text-[10px] truncate w-20 text-right">${state.teams.find(t=>t.id===m.home)?.name || 'TBD'}</span>
+                            <input type="number" value="${m.hS ?? ''}" onchange="updateScore(${m.id}, this.value, 'home', ${!!m.stage})" class="w-8 h-8 bg-black border border-zinc-800 rounded text-center text-xs outline-none focus:border-red-600">
+                            <input type="number" value="${m.aS ?? ''}" onchange="updateScore(${m.id}, this.value, 'away', ${!!m.stage})" class="w-8 h-8 bg-black border border-zinc-800 rounded text-center text-xs outline-none focus:border-red-600">
+                            <span class="text-[10px] truncate w-20 text-left">${state.teams.find(t=>t.id===m.away)?.name || 'TBD'}</span>
+                        </div>
+                    </div>`).join('');
+            }
+
+            const fixtureList = document.getElementById('user-fixture-list');
+            const roundMatches = state.matches.filter(m => m.round === state.currentRound);
+            let fixtureHtml = ""; let lastG = "";
+            roundMatches.sort((a,b)=>a.group.localeCompare(b.group)).forEach(m => {
+                if(m.group !== lastG) {
+                    lastG = m.group;
+                    fixtureHtml += `<div class="flex items-center space-x-4 py-4"><div class="h-[1px] flex-1 bg-zinc-900"></div><span class="group-divider-text text-[10px] font-black italic">Group ${m.group}</span><div class="h-[1px] flex-1 bg-zinc-900"></div></div>`;
+                }
+                fixtureHtml += `<div class="bg-zinc-900/80 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                    <div class="flex-1 text-right text-[11px] truncate pr-3">${state.teams.find(t=>t.id===m.home)?.name}</div>
+                    <div class="flex items-center space-x-1">
+                        <div class="score-box ${getResultClass(m.hS, m.aS)}">${m.hS ?? ''}</div>
+                        <div class="score-box ${getResultClass(m.aS, m.hS)}">${m.aS ?? ''}</div>
+                    </div>
+                    <div class="flex-1 text-left text-[11px] truncate pl-3">${state.teams.find(t=>t.id===m.away)?.name}</div>
+                </div>`;
+            });
+            if(fixtureList) fixtureList.innerHTML = fixtureHtml;
+
+            const tableCont = document.getElementById('group-tables-container');
+            if(tableCont) {
+                tableCont.innerHTML = "ABCDEFGHIJKL".split("").map(g => {
+                    const gt = state.teams.filter(t => t.group === g).sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+                    return `
+                    <div class="bg-zinc-900/40 p-3 rounded-3xl border border-white/5">
+                        <div class="text-[10px] font-black text-red-600 uppercase mb-3 px-2">Group ${g}</div>
+                        <table class="standing-table">
+                            <thead><tr><th class="col-player">PLAYER</th><th class="col-stat">P</th><th class="col-stat">GD</th><th class="col-pts">PTS</th></tr></thead>
+                            <tbody>${gt.map((t,i) => `<tr class="${i<2?'text-white':'text-zinc-500'}">
+                                <td class="col-player font-bold truncate">${i+1}. ${t.name}</td>
+                                <td class="col-stat">${t.p}</td>
+                                <td class="col-stat ${t.gd>0?'text-green-500':''}">${t.gd}</td>
+                                <td class="col-pts font-black ${i<2?'text-red-600 neon-text':''}">${t.pts}</td>
+                            </tr>`).join('')}</tbody>
+                        </table>
+                    </div>`;
+                }).join('');
+            }
+
+            const bracket = document.getElementById('knockout-bracket');
+            if(state.isKnockoutStarted && bracket) {
+                bracket.innerHTML = ['R32', 'R16', 'QF', 'SF', 'Final'].map(s => {
+                    const km = state.koMatches.filter(m => m.stage === s);
+                    return `<div class="space-y-4">
+                        <div class="text-[9px] font-black uppercase text-center text-red-600 tracking-[0.5em] mb-4">${s === 'R32' ? 'Round of 32' : (s === 'R16' ? 'Round of 16' : s)}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">${km.map(m => {
+                            const home = state.teams.find(t=>t.id===m.home);
+                            const away = state.teams.find(t=>t.id===m.away);
+                            return `<div class="bg-zinc-900/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                                <div class="flex justify-between items-center"><span class="text-[10px] ${m.hS > m.aS ? 'text-white' : 'text-zinc-500'}">${home?.name || 'TBD'}</span><span class="font-black text-xs ${getResultClass(m.hS, m.aS)}">${m.hS ?? '-'}</span></div>
+                                <div class="flex justify-between items-center"><span class="text-[10px] ${m.aS > m.hS ? 'text-white' : 'text-zinc-500'}">${away?.name || 'TBD'}</span><span class="font-black text-xs ${getResultClass(m.aS, m.hS)}">${m.aS ?? '-'}</span></div>
+                            </div>`;
+                        }).join('')}</div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        window.toggleUserSubTab = (t) => {
+            const isG = t === 'group';
+            document.getElementById('group-stage-content').classList.toggle('hidden', !isG);
+            document.getElementById('knockout-content').classList.toggle('hidden', isG);
+            document.getElementById('sub-btn-group').className = isG ? "flex-1 py-3 rounded-xl text-[10px] font-black uppercase bg-red-600" : "flex-1 py-3 rounded-xl text-[10px] font-black uppercase text-zinc-500";
+            document.getElementById('sub-btn-knock').className = !isG ? "flex-1 py-3 rounded-xl text-[10px] font-black uppercase bg-red-600" : "flex-1 py-3 rounded-xl text-[10px] font-black uppercase text-zinc-500";
         };
 
-        window.updatePOTR = (field, val) => {
-            const cur = window.state.currentRound;
-            if(!window.state.potr[cur]) window.state.potr[cur] = { name: '', gf: 0, ga: 0, img: '' };
-            window.state.potr[cur][field] = field === 'name' ? val : (val === "" ? 0 : parseInt(val));
-            saveToCloud();
-            refreshUI();
+        window.filterRound = (r) => {
+            state.currentRound = r;
+            [1,2,3].forEach(i => {
+                document.getElementById('rd-'+i).className = `flex-1 min-w-[100px] py-3 rounded-xl text-[10px] font-black uppercase bg-zinc-900 border border-white/5 ${i === r ? 'active-round-btn' : 'text-zinc-500'}`;
+            });
+            renderAll();
         };
-
-        window.updateTeamName = (id, name) => { window.state.teams[id].name = name; saveToCloud(); };
-        window.startLeague = () => { window.state.isLeagueStarted = true; saveToCloud(); refreshUI(); };
-        window.resetTournament = () => { if(confirm("Data အားလုံးကို ဖျက်ပစ်မလား?")) { window.state.isLeagueStarted = false; window.state.rounds = Array.from({length: 8}, (_, i) => ({ round: i + 1, matches: [] })); window.state.knockout = { playoffs: [], r16: [], qf: [], sf: [], final: [] }; window.state.potr = {}; saveToCloud(); refreshUI(); } };
-        window.addLeagueMatch = (rIdx) => { window.state.rounds[rIdx].matches.push({ h: 0, a: 1, hs: null, as: null }); saveToCloud(); refreshUI(); };
-        window.deleteMatch = (rIdx, mIdx) => { if(confirm("ဤပွဲစဉ်ကို ဖျက်မလား?")) { window.state.rounds[rIdx].matches.splice(mIdx, 1); saveToCloud(); refreshUI(); } };
-        window.updateScore = (rIdx, mIdx, side, val) => { window.state.rounds[rIdx].matches[mIdx][side] = val === "" ? null : parseInt(val); saveToCloud(); refreshUI(); };
-        window.addKOMatch = (stage) => { window.state.knockout[stage].push({ t1: '', t2: '', s1: null, s2: null }); saveToCloud(); refreshUI(); };
-        window.deleteKOMatch = (stage, idx) => { if(confirm("ဖျက်မလား?")) { window.state.knockout[stage].splice(idx, 1); saveToCloud(); refreshUI(); } };
-        window.updateKOMatch = (stage, idx, field, val) => { window.state.knockout[stage][idx][field] = field.startsWith('s') ? (val === "" ? null : parseInt(val)) : val; saveToCloud(); refreshUI(); };
-        window.changeTab = t => { window.state.activeTab = t; refreshUI(); };
-        window.moveRound = d => { const n = window.state.currentRound + d; if(n > 0 && n <= 8) { window.state.currentRound = n; refreshUI(); } };
-        window.adminLogin = () => { if(prompt("Password?") === "1234") { window.state.isAdmin = true; refreshUI(); } };
-        window.logoutAdmin = () => { window.state.isAdmin = false; refreshUI(); };
-        window.renderHeader = () => { document.getElementById('admin-status').innerHTML = window.state.isAdmin ? `<button onclick="logoutAdmin()" class="px-3 py-1 bg-red-600/10 text-red-500 text-[8px] font-black rounded-full border border-red-500/20">ADMIN</button>` : `<button onclick="adminLogin()" class="px-3 py-1 bg-white/5 text-zinc-500 text-[8px] font-black rounded-full">LOG IN</button>`; };
-
-        window.onload = refreshUI;
     </script>
-    <style>
-        body { background: #000; color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .custom-scroll::-webkit-scrollbar { width: 3px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-        .glass-nav { background: rgba(30, 10, 10, 0.9); backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.05); }
-        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
-    </style>
-</head>
-<body class="max-w-md mx-auto min-h-screen border-x border-white/5 relative bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.1),transparent)]">
-    <div class="px-6 py-4 flex justify-between items-center">
-        <div class="text-[8px] font-black text-red-500/60 uppercase tracking-[0.2em]">UCL Master Hub</div>
-        <div id="admin-status"></div>
-    </div>
-    
-    <header class="px-6 mb-8">
-        <h1 class="text-4xl font-black italic tracking-tighter leading-none">THE ONE <br><span class="text-red-600">COMMUNITY</span></h1>
-        <p class="text-[8px] font-bold text-zinc-500 uppercase mt-2 tracking-[0.2em]">Champions League Mode</p>
-    </header>
-
-    <main id="content" class="px-4 pb-32"></main>
-
-    <nav class="fixed bottom-6 left-6 right-6 h-16 glass-nav rounded-3xl flex items-center px-2 z-50 border border-white/10 shadow-2xl">
-        <div id="nav-bar" class="flex w-full items-center justify-around"></div>
-    </nav>
-
-    <div id="loader" class="fixed inset-0 bg-black z-[100] flex items-center justify-center">
-        <div class="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-    </div>
 </body>
 </html>
