@@ -63,6 +63,20 @@
             background: rgba(0,0,0,0.85);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255,255,255,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .sponsor-slider-container {
+            overflow: hidden;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 64px; /* Adjust this based on header height */
+            z-index: 90;
+            width: 100%;
         }
 
         .active-round-btn {
@@ -79,14 +93,6 @@
             letter-spacing: 0.2em;
         }
 
-        .sponsor-slider-container {
-            overflow: hidden;
-            background: #000;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            width: 100%;
-        }
-
         .sponsor-track {
             display: flex;
             width: fit-content;
@@ -94,30 +100,24 @@
         }
 
         .sponsor-item {
-            width: 160px;
-            height: 80px;
+            width: 140px;
+            height: 70px;
             flex-shrink: 0;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
-            cursor: pointer;
             display: block;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .sponsor-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: all 0.3s ease;
         }
 
         @keyframes scroll {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-960px); } 
+            100% { transform: translateX(-50%); } 
         }
 
-        /* Image Picker Styles */
         .img-preview-box {
             width: 100%;
             height: 100px;
@@ -162,7 +162,7 @@
         </div>
     </div>
 
-    <header class="glass-header sticky top-0 z-50 px-5 py-4">
+    <header class="glass-header px-5 py-4">
         <div class="flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <div class="w-8 h-8 red-gradient rounded-lg flex items-center justify-center">
@@ -180,7 +180,7 @@
         </div>
     </header>
 
-    <!-- Sponsor Slider -->
+    <!-- Sticky Sponsor Slider -->
     <div class="sponsor-slider-container">
         <div id="sponsor-track-list" class="sponsor-track"></div>
     </div>
@@ -188,15 +188,12 @@
     <main class="p-4">
         <!-- Admin Panel -->
         <section id="admin-panel" class="tab-content space-y-6">
-            <!-- Sponsor Management -->
             <div class="bg-zinc-900/50 rounded-3xl p-6 border border-white/5">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-[10px] font-black uppercase text-red-600 tracking-widest">Sponsor Images</h3>
                     <span class="text-[8px] text-zinc-500">Click camera to pick</span>
                 </div>
-                <div id="admin-sponsor-config" class="grid grid-cols-2 gap-4">
-                    <!-- Dynamic Sponsor Inputs -->
-                </div>
+                <div id="admin-sponsor-config" class="grid grid-cols-2 gap-4"></div>
                 <button id="save-sponsors-btn" onclick="updateSponsors()" class="w-full mt-6 red-gradient p-4 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-red-600/20">Save All Changes</button>
             </div>
 
@@ -281,7 +278,6 @@
             }
         });
 
-        // Tab Management
         window.openAdminLogin = () => { if(state.isAdminAuthenticated) { showTab('admin-panel'); return; } document.getElementById('admin-login-modal').classList.remove('hidden'); };
         window.closeAdminLogin = () => document.getElementById('admin-login-modal').classList.add('hidden');
         window.attemptLogin = () => {
@@ -298,7 +294,6 @@
             document.getElementById('btn-user').className = !isA ? "px-4 py-2 rounded-lg text-[9px] font-black uppercase bg-red-600 text-white" : "px-4 py-2 rounded-lg text-[9px] font-black uppercase text-zinc-500";
         };
 
-        // Sponsor Management (Image Logic)
         function renderSponsorEditor() {
             const container = document.getElementById('admin-sponsor-config');
             if(!container) return;
@@ -319,7 +314,6 @@
         window.handleImage = (input, idx) => {
             const file = input.files[0];
             if (!file) return;
-            
             const reader = new FileReader();
             reader.onload = (e) => {
                 const base64 = e.target.result;
@@ -327,7 +321,7 @@
                 const previewBox = document.getElementById(`preview-box-${idx}`);
                 imgTag.src = base64;
                 previewBox.classList.add('has-img');
-                state.sponsors[idx].img = base64; // Update local state
+                state.sponsors[idx].img = base64;
             };
             reader.readAsDataURL(file);
         };
@@ -336,12 +330,10 @@
             const btn = document.getElementById('save-sponsors-btn');
             btn.innerText = "Saving...";
             btn.disabled = true;
-            
             const finalSponsors = state.sponsors.map((s, i) => ({
-                img: document.getElementById(`img-tag-${i}`).src.startsWith('data:') ? document.getElementById(`img-tag-${i}`).src : s.img,
+                img: document.getElementById(`img-tag-${i}`).src,
                 link: document.getElementById(`sp-link-${i}`).value
             }));
-
             try {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { sponsors: finalSponsors });
                 btn.innerText = "Saved Successfully!";
@@ -351,7 +343,6 @@
             setTimeout(() => { btn.innerText = "Save All Changes"; btn.disabled = false; }, 2000);
         };
 
-        // Tournament Logic
         window.generateTournamentData = async () => {
             const raw = document.getElementById('teamInput').value.split('\n').filter(n => n.trim() !== "");
             if (raw.length !== 48) return;
@@ -367,7 +358,7 @@
 
         window.updateScore = async (id, val, side, isKo) => {
             const s = val === "" ? null : parseInt(val);
-            let targetM = isKo ? [...state.koMatches] : [...state.matches];
+            let targetM = isKo ? state.koMatches : state.matches;
             const m = targetM.find(x => x.id === id);
             if(side === 'home') m.hS = s; else m.aS = s;
             
@@ -382,10 +373,10 @@
             });
 
             if(isKo) {
-                targetM.forEach(m => { 
+                state.koMatches.forEach(m => { 
                     if(m.hS !== null && m.aS !== null && m.nextMatch) { 
                         const winner = m.hS >= m.aS ? m.home : m.away; 
-                        const nm = targetM.find(x => x.id === m.nextMatch); 
+                        const nm = state.koMatches.find(x => x.id === m.nextMatch); 
                         if(nm) { if(m.nextPos === 'home') nm.home = winner; else nm.away = winner; }
                     } 
                 });
@@ -424,15 +415,17 @@
         function renderAll() {
             const getResultClass = (s1, s2) => (s1 === null || s2 === null) ? 'text-zinc-500' : (s1 > s2 ? 'score-win' : (s1 < s2 ? 'score-loss' : 'score-draw'));
             
-            // Sponsor Rendering
             const sponsorTrack = document.getElementById('sponsor-track-list');
             if(sponsorTrack && state.sponsors) {
-                const sponsorHtml = state.sponsors.filter(s => s.img).map(s => `
-                    <a href="${s.link}" target="_blank" class="sponsor-item">
-                        <img src="${s.img}">
-                    </a>
-                `).join('');
-                sponsorTrack.innerHTML = sponsorHtml + sponsorHtml; // Duplicate for loop
+                const activeSponsors = state.sponsors.filter(s => s.img);
+                if(activeSponsors.length > 0) {
+                    const sponsorHtml = activeSponsors.map(s => `
+                        <a href="${s.link}" target="_blank" class="sponsor-item">
+                            <img src="${s.img}">
+                        </a>
+                    `).join('');
+                    sponsorTrack.innerHTML = sponsorHtml + sponsorHtml + sponsorHtml; // 3x for smoother scroll
+                }
             }
 
             const groupDone = state.matches.length > 0 && state.matches.every(m => m.hS !== null && m.aS !== null);
