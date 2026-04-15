@@ -109,19 +109,38 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            filter: grayscale(0%) brightness(1); 
             transition: all 0.3s ease;
-        }
-
-        .sponsor-item:hover img {
-            transform: scale(1.05);
-            filter: brightness(1.2);
         }
 
         @keyframes scroll {
             0% { transform: translateX(0); }
             100% { transform: translateX(-960px); } 
         }
+
+        /* Image Picker Styles */
+        .img-preview-box {
+            width: 100%;
+            height: 100px;
+            background: #111;
+            border-radius: 12px;
+            border: 2px dashed #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .img-preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            inset: 0;
+            display: none;
+        }
+        .img-preview-box.has-img img { display: block; }
+        .img-preview-box.has-img i { opacity: 0; }
     </style>
 </head>
 <body class="no-scrollbar pb-10">
@@ -163,21 +182,22 @@
 
     <!-- Sponsor Slider -->
     <div class="sponsor-slider-container">
-        <div id="sponsor-track-list" class="sponsor-track">
-            <!-- အောက်က JavaScript ကနေ ဒီနေရာကို ဖြည့်ပေးမှာဖြစ်ပါတယ် -->
-        </div>
+        <div id="sponsor-track-list" class="sponsor-track"></div>
     </div>
 
     <main class="p-4">
         <!-- Admin Panel -->
         <section id="admin-panel" class="tab-content space-y-6">
-            <!-- Sponsor Management Section -->
+            <!-- Sponsor Management -->
             <div class="bg-zinc-900/50 rounded-3xl p-6 border border-white/5">
-                <h3 class="text-[10px] font-black uppercase text-red-600 mb-4 tracking-widest">Sponsor Management</h3>
-                <div id="admin-sponsor-config" class="space-y-4">
-                    <!-- Sponsor editor inputs go here -->
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[10px] font-black uppercase text-red-600 tracking-widest">Sponsor Images</h3>
+                    <span class="text-[8px] text-zinc-500">Click camera to pick</span>
                 </div>
-                <button onclick="updateSponsors()" class="w-full mt-4 red-gradient p-4 rounded-xl text-[9px] font-black uppercase">Update Sponsors</button>
+                <div id="admin-sponsor-config" class="grid grid-cols-2 gap-4">
+                    <!-- Dynamic Sponsor Inputs -->
+                </div>
+                <button id="save-sponsors-btn" onclick="updateSponsors()" class="w-full mt-6 red-gradient p-4 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-red-600/20">Save All Changes</button>
             </div>
 
             <div class="bg-zinc-900/50 rounded-3xl p-6 border border-white/5">
@@ -235,23 +255,11 @@
         const auth = getAuth(app);
         const appId = "the-one-neon-v1"; 
 
-        // Initial default sponsors if data not exists
-       const defaultSponsors = [
-    
-        { img: "FreeTip Result - 2026-04-15T223108.998.jpg", link: "https://t.me/apexefb_market" },
-        { img: "FreeTip Result - 2026-04-15T223423.822.jpg", link: "https://t.me/apexefb_market" },
-        { img: "FreeTip Result - 2026-04-15T223108.998.jpg", link: "https://t.me/apexefb_market" },
-        { img: "FreeTip Result - 2026-04-15T223423.822.jpg", link: "https://t.me/apexefb_market" },
-        { img: "FreeTip Result - 2026-04-15T223108.998.jpg", link: "https://t.me/apexefb_market" },
-        { img: "FreeTip Result - 2026-04-15T223423.822.jpg", link: "https://t.me/apexefb_market" }
-    
-    ];
-
         let state = { 
             teams: [], 
             matches: [], 
             koMatches: [], 
-            sponsors: defaultSponsors,
+            sponsors: Array(6).fill({ img: "", link: "https://t.me/apexefb_market" }),
             isKnockoutStarted: false, 
             currentRound: 1, 
             isAdminAuthenticated: false 
@@ -266,7 +274,6 @@
                         renderAll(); 
                         renderSponsorEditor();
                     } else {
-                        // If document doesn't exist, create it with default sponsors
                         setDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), state);
                     }
                     document.getElementById('loading-screen').style.display = 'none';
@@ -274,6 +281,7 @@
             }
         });
 
+        // Tab Management
         window.openAdminLogin = () => { if(state.isAdminAuthenticated) { showTab('admin-panel'); return; } document.getElementById('admin-login-modal').classList.remove('hidden'); };
         window.closeAdminLogin = () => document.getElementById('admin-login-modal').classList.add('hidden');
         window.attemptLogin = () => {
@@ -290,27 +298,60 @@
             document.getElementById('btn-user').className = !isA ? "px-4 py-2 rounded-lg text-[9px] font-black uppercase bg-red-600 text-white" : "px-4 py-2 rounded-lg text-[9px] font-black uppercase text-zinc-500";
         };
 
-        // Sponsor Management Functions
+        // Sponsor Management (Image Logic)
         function renderSponsorEditor() {
             const container = document.getElementById('admin-sponsor-config');
             if(!container) return;
             container.innerHTML = state.sponsors.map((s, i) => `
-                <div class="p-4 bg-black rounded-2xl border border-white/5 space-y-2">
-                    <p class="text-[8px] font-bold text-zinc-500 uppercase">Sponsor ${i+1}</p>
-                    <input type="text" id="sp-img-${i}" value="${s.img}" placeholder="Image Filename or URL" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-[10px] outline-none text-white">
-                    <input type="text" id="sp-link-${i}" value="${s.link}" placeholder="Telegram/Web Link" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-[10px] outline-none text-white">
+                <div class="space-y-2">
+                    <div id="preview-box-${i}" onclick="triggerFile(${i})" class="img-preview-box ${s.img ? 'has-img' : ''}">
+                        <i class="fas fa-camera text-zinc-700 text-lg"></i>
+                        <img src="${s.img}" id="img-tag-${i}">
+                        <input type="file" id="file-input-${i}" class="hidden" accept="image/*" onchange="handleImage(this, ${i})">
+                    </div>
+                    <input type="text" id="sp-link-${i}" value="${s.link}" placeholder="Link..." class="w-full bg-black border border-zinc-800 rounded-lg p-2 text-[9px] outline-none text-zinc-400">
                 </div>
             `).join('');
         }
 
-        window.updateSponsors = async () => {
-            const newSponsors = state.sponsors.map((_, i) => ({
-                img: document.getElementById(`sp-img-${i}`).value,
-                link: document.getElementById(`sp-link-${i}`).value
-            }));
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { sponsors: newSponsors });
+        window.triggerFile = (idx) => document.getElementById(`file-input-${idx}`).click();
+
+        window.handleImage = (input, idx) => {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64 = e.target.result;
+                const imgTag = document.getElementById(`img-tag-${idx}`);
+                const previewBox = document.getElementById(`preview-box-${idx}`);
+                imgTag.src = base64;
+                previewBox.classList.add('has-img');
+                state.sponsors[idx].img = base64; // Update local state
+            };
+            reader.readAsDataURL(file);
         };
 
+        window.updateSponsors = async () => {
+            const btn = document.getElementById('save-sponsors-btn');
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+            
+            const finalSponsors = state.sponsors.map((s, i) => ({
+                img: document.getElementById(`img-tag-${i}`).src.startsWith('data:') ? document.getElementById(`img-tag-${i}`).src : s.img,
+                link: document.getElementById(`sp-link-${i}`).value
+            }));
+
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { sponsors: finalSponsors });
+                btn.innerText = "Saved Successfully!";
+            } catch (err) {
+                btn.innerText = "Error Saving";
+            }
+            setTimeout(() => { btn.innerText = "Save All Changes"; btn.disabled = false; }, 2000);
+        };
+
+        // Tournament Logic
         window.generateTournamentData = async () => {
             const raw = document.getElementById('teamInput').value.split('\n').filter(n => n.trim() !== "");
             if (raw.length !== 48) return;
@@ -386,13 +427,12 @@
             // Sponsor Rendering
             const sponsorTrack = document.getElementById('sponsor-track-list');
             if(sponsorTrack && state.sponsors) {
-                const sponsorHtml = state.sponsors.map(s => `
+                const sponsorHtml = state.sponsors.filter(s => s.img).map(s => `
                     <a href="${s.link}" target="_blank" class="sponsor-item">
-                        <img src="${s.img}" alt="Sponsor" onerror="this.src='https://picsum.photos/seed/placeholder/320/160'">
+                        <img src="${s.img}">
                     </a>
                 `).join('');
-                // Loop twice for infinite effect
-                sponsorTrack.innerHTML = sponsorHtml + sponsorHtml;
+                sponsorTrack.innerHTML = sponsorHtml + sponsorHtml; // Duplicate for loop
             }
 
             const groupDone = state.matches.length > 0 && state.matches.every(m => m.hS !== null && m.aS !== null);
@@ -402,6 +442,7 @@
                 else if(state.isKnockoutStarted) { koBtn.innerText = "Knockout Started"; koBtn.disabled = true; koBtn.classList.add('opacity-50'); }
             }
             document.getElementById('user-sub-tabs').classList.toggle('hidden', !state.isKnockoutStarted);
+            
             const adminList = document.getElementById('admin-match-list');
             if(adminList) {
                 const data = state.isKnockoutStarted ? state.koMatches : state.matches;
