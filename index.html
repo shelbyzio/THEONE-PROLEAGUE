@@ -72,21 +72,20 @@
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* Floating Result Bubble Styling (Neon Version) */
+        /* Floating Bubble Styling (Without Text Label) */
         .result-bubble {
             position: fixed;
             bottom: 30px;
             right: 25px;
-            width: 68px;
-            height: 68px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             background: linear-gradient(135deg, #001a2e 0%, #004e7c 100%);
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            cursor: move;
+            cursor: pointer;
             border: 2px solid var(--neon-blue);
             user-select: none;
             touch-action: none;
@@ -96,25 +95,11 @@
 
         .result-bubble:active { transform: scale(0.9); }
 
-        .bubble-label {
-            position: absolute;
-            top: -24px;
-            background: var(--neon-blue);
-            color: #000;
-            font-size: 9px;
-            font-weight: 900;
-            padding: 3px 10px;
-            border-radius: 20px;
-            white-space: nowrap;
-            text-transform: uppercase;
-            box-shadow: 0 0 10px var(--neon-blue-glow);
-            pointer-events: none;
-        }
-
         .neon-icon {
             color: #fff;
             filter: drop-shadow(0 0 5px var(--neon-blue));
             font-size: 24px;
+            pointer-events: none;
         }
 
         @keyframes neon-pulse {
@@ -143,9 +128,8 @@
     <p class="text-[10px] font-black tracking-[0.3em] text-zinc-500 uppercase">Live Synchronizing</p>
 </div>
 
-<!-- Draggable Floating Neon Result Bubble -->
+<!-- Draggable Floating Neon Bubble (Telegram Link Only) -->
 <div id="draggable-bubble" class="result-bubble">
-    <span class="bubble-label">Result</span>
     <i class="fab fa-telegram-plane neon-icon"></i>
 </div>
 
@@ -259,9 +243,11 @@
     let xOffset = 0;
     let yOffset = 0;
     let dragStartTime;
+    let hasMoved = false;
 
     function dragStart(e) {
         dragStartTime = Date.now();
+        hasMoved = false;
         if (e.type === "touchstart") {
             initialX = e.touches[0].clientX - xOffset;
             initialY = e.touches[0].clientY - yOffset;
@@ -274,14 +260,12 @@
 
     function dragEnd(e) {
         const dragDuration = Date.now() - dragStartTime;
-        const dragDistance = Math.sqrt(Math.pow(currentX - (initialX + xOffset), 2) + Math.pow(currentY - (initialY + yOffset), 2));
-        
         initialX = currentX;
         initialY = currentY;
         isDragging = false;
 
-        // If it was a quick tap without much movement, treat as click
-        if (dragDuration < 200 && dragDistance < 10) {
+        // Click detection: It's a click if duration is short and it hasn't moved much
+        if (!hasMoved || dragDuration < 150) {
             window.open('https://t.me/agust_nadi', '_blank');
         }
     }
@@ -289,6 +273,7 @@
     function drag(e) {
         if (isDragging) {
             e.preventDefault();
+            hasMoved = true;
             if (e.type === "touchmove") {
                 currentX = e.touches[0].clientX - initialX;
                 currentY = e.touches[0].clientY - initialY;
@@ -302,9 +287,9 @@
         }
     }
 
-    bubble.addEventListener("touchstart", dragStart, false);
-    bubble.addEventListener("touchend", dragEnd, false);
-    bubble.addEventListener("touchmove", drag, false);
+    bubble.addEventListener("touchstart", dragStart, {passive: false});
+    bubble.addEventListener("touchend", dragEnd, {passive: false});
+    bubble.addEventListener("touchmove", drag, {passive: false});
     bubble.addEventListener("mousedown", dragStart, false);
     bubble.addEventListener("mouseup", dragEnd, false);
     bubble.addEventListener("mousemove", drag, false);
