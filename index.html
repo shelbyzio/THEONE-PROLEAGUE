@@ -65,6 +65,23 @@
 
         .loading-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .nav-btn.active { background: var(--neon-red); color: white; box-shadow: 0 4px 15px var(--neon-glow); }
+        
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .admin-score-input {
+            width: 45px;
+            height: 45px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 900;
+            font-size: 16px;
+            color: #fff;
+            outline: none;
+        }
+        .admin-score-input:focus { border-color: #ff003c; box-shadow: 0 0 10px rgba(255, 0, 60, 0.2); }
     </style>
 </head>
 <body class="no-scrollbar pb-20">
@@ -121,7 +138,9 @@
                         <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-red-600 italic">Match Schedule</h3>
                         <div class="h-[1px] flex-1 bg-zinc-800 ml-4"></div>
                     </div>
-                    <div id="fixture-container" class="space-y-4"></div>
+                    <div id="fixture-container" class="space-y-4">
+                        <!-- Fixtures injected here -->
+                    </div>
                 </div>
 
                 <div>
@@ -129,7 +148,9 @@
                         <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 italic">League Standings</h3>
                         <div class="h-[1px] flex-1 bg-zinc-800 ml-4"></div>
                     </div>
-                    <div id="standings-container" class="space-y-8"></div>
+                    <div id="standings-container" class="space-y-8">
+                        <!-- Standings injected here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -139,19 +160,31 @@
     <section id="admin-panel" class="tab-content space-y-8">
         <div class="glass-panel rounded-[2rem] p-8">
             <h3 class="text-xs font-black uppercase text-red-600 mb-6 tracking-widest">Admin Dashboard</h3>
+            <p class="text-[10px] text-zinc-500 mb-2 uppercase">Bulk Player Import (1 name per line)</p>
             <textarea id="playerInput" rows="5" class="w-full bg-black border border-white/10 rounded-2xl p-5 text-xs text-zinc-300 mb-6 outline-none focus:border-red-600" placeholder="Enter 48 names..."></textarea>
             <button onclick="initLeague()" class="w-full red-gradient py-4 rounded-xl text-[10px] font-black uppercase">Draw & Sync New League</button>
         </div>
 
         <div class="space-y-3">
             <div class="flex items-center justify-between px-2">
-                <span class="text-[10px] font-black uppercase text-zinc-600">Enter Results</span>
+                <span class="text-[10px] font-black uppercase text-zinc-600">Enter Results (ရလဒ်များထည့်သွင်းရန်)</span>
                 <span class="text-[8px] text-green-500 uppercase flex items-center">
                     <span class="w-1 h-1 bg-green-500 rounded-full mr-2 animate-pulse"></span>
                     Live Sync Enabled
                 </span>
             </div>
-            <div id="admin-matches" class="space-y-3"></div>
+            
+            <!-- Round Selectors for Admin -->
+            <div class="flex space-x-2 overflow-x-auto no-scrollbar mb-4">
+                <button onclick="setRound(1)" id="admin-rd-1" class="flex-1 min-w-[80px] py-2.5 rounded-xl text-[9px] font-black uppercase transition-all">R1</button>
+                <button onclick="setRound(2)" id="admin-rd-2" class="flex-1 min-w-[80px] py-2.5 rounded-xl text-[9px] font-black uppercase transition-all">R2</button>
+                <button onclick="setRound(3)" id="admin-rd-3" class="flex-1 min-w-[80px] py-2.5 rounded-xl text-[9px] font-black uppercase transition-all">R3</button>
+            </div>
+
+            <!-- Matches List for Result Entry -->
+            <div id="admin-matches" class="space-y-4">
+                <!-- Admin matches list will be rendered here -->
+            </div>
         </div>
     </section>
 </main>
@@ -159,10 +192,9 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    // Firebase Config
-    const firebaseConfig = {
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
         apiKey: "AIzaSyBO_TmNXPkY2-vvDtcP8j7YX6HU-8lRpV4",
         authDomain: "theoneproleague.firebaseapp.com",
         projectId: "theoneproleague",
@@ -172,36 +204,54 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const appId = "the-one-neon-v1";
+    const appId = typeof __app_id !== 'undefined' ? __app_id : "the-one-pro-league-v1";
     const G_NAMES = "ABCDEFGHIJKL".split("");
+    const MAIN_DATA_PATH = ['artifacts', appId, 'public', 'data', 'leagueData', 'current'];
 
     let state = {
         teams: [],
         matches: [],
         activeRound: 1,
-        isAdmin: false
+        isAdmin: false,
+        user: null
     };
 
-    // --- OnSnapshot: Real-time Data Sync ---
-    onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-            await signInAnonymously(auth);
-        } else {
-            // Firestore data ကို listen လုပ်ထားမည်
-            onSnapshot(doc(db, 'artifacts', appId, 'public', 'mainData'), (snap) => {
-                if (snap.exists()) {
-                    const data = snap.data();
-                    state.teams = data.teams || [];
-                    state.matches = data.matches || [];
-                    render();
-                }
-                document.getElementById('loading-screen').style.display = 'none';
-            }, (error) => {
-                console.error("Sync Error:", error);
-                document.getElementById('loading-screen').style.display = 'none';
-            });
+    const initAuth = async () => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (error) {
+            console.error("Auth Error:", error);
+            document.getElementById('loading-screen').innerHTML = `<p class="text-red-500">Authentication Failed</p>`;
         }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+        state.user = user;
+        if (user) setupRealtimeListener();
     });
+
+    initAuth();
+
+    function setupRealtimeListener() {
+        if (!state.user) return;
+        const docRef = doc(db, ...MAIN_DATA_PATH);
+        onSnapshot(docRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data();
+                state.teams = data.teams || [];
+                state.matches = data.matches || [];
+                render();
+            }
+            document.getElementById('loading-screen').style.display = 'none';
+        }, (err) => {
+            console.error(err);
+            document.getElementById('loading-screen').style.display = 'none';
+        });
+    }
 
     window.switchTab = (id) => {
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -209,6 +259,7 @@
         const isAdmin = id === 'admin-panel';
         document.getElementById('nav-admin').className = `nav-btn px-5 py-2.5 rounded-lg text-[10px] font-black uppercase ${isAdmin ? 'active' : 'text-zinc-500'}`;
         document.getElementById('nav-user').className = `nav-btn px-5 py-2.5 rounded-lg text-[10px] font-black uppercase ${!isAdmin ? 'active' : 'text-zinc-500'}`;
+        render();
     };
 
     window.toggleModal = (id, show) => document.getElementById(id).classList.toggle('hidden', !show);
@@ -223,6 +274,8 @@
             state.isAdmin = true;
             toggleModal('admin-modal', false);
             switchTab('admin-panel');
+        } else {
+            alert("မှားယွင်းနေပါသည်။");
         }
     };
 
@@ -232,14 +285,13 @@
     };
 
     window.initLeague = async () => {
+        if (!state.user) return;
         const names = document.getElementById('playerInput').value.split('\n').filter(n => n.trim() !== "");
-        if (names.length !== 48) return alert("Please enter exactly 48 names.");
+        if (names.length !== 48) { alert("ကစားသမား ၄၈ ဦး တိတိထည့်ပေးပါ။"); return; }
 
         const shuffled = names.sort(() => Math.random() - 0.5);
         const teams = shuffled.map((name, i) => ({
-            id: i + 1,
-            name: name.trim(),
-            p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0,
+            id: i + 1, name: name.trim(), p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0,
             group: G_NAMES[Math.floor(i / 4)]
         }));
 
@@ -247,123 +299,139 @@
         let mid = 1;
         G_NAMES.forEach(g => {
             const gt = teams.filter(t => t.group === g);
-            const pairings = [[0,1,1],[2,3,1],[0,2,2],[1,3,2],[0,3,3],[1,2,3]];
+            const pairings = [{h:0, a:1, r:1}, {h:2, a:3, r:1}, {h:0, a:2, r:2}, {h:1, a:3, r:2}, {h:0, a:3, r:3}, {h:1, a:2, r:3}];
             pairings.forEach(p => {
-                matches.push({ id: mid++, group: g, round: p[2], home: gt[p[0]].id, away: gt[p[1]].id, hS: null, aS: null });
+                matches.push({ id: mid++, group: g, round: p.r, home: gt[p.h].id, away: gt[p.a].id, hS: null, aS: null });
             });
         });
 
-        // Firebase သို့ data တင်မည်၊ snapshot ကြောင့် UI အလိုလို update ဖြစ်မည်
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { teams, matches });
+        await setDoc(doc(db, ...MAIN_DATA_PATH), { teams, matches });
+        alert("အောင်မြင်စွာ ပြုလုပ်ပြီးပါပြီ။");
     };
 
     window.updateScore = async (id, val, side) => {
+        if (!state.user) return;
         const score = val === "" ? null : parseInt(val);
-        const matchIndex = state.matches.findIndex(x => x.id === id);
-        if (matchIndex === -1) return;
+        const matchIdx = state.matches.findIndex(m => m.id === id);
+        if (matchIdx === -1) return;
 
-        // Local state update
-        if (side === 'home') state.matches[matchIndex].hS = score;
-        else state.matches[matchIndex].aS = score;
+        let newMatches = [...state.matches];
+        if (side === 'home') newMatches[matchIdx].hS = score;
+        else newMatches[matchIdx].aS = score;
 
-        // Recalculate Table from local matches
-        let updatedTeams = state.teams.map(x => ({ ...x, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 }));
-        state.matches.forEach(match => {
-            if (match.hS !== null && match.aS !== null) {
-                const h = updatedTeams.find(x => x.id === match.home);
-                const a = updatedTeams.find(x => x.id === match.away);
+        // Recalculate Table
+        let updatedTeams = state.teams.map(t => ({ ...t, p:0, w:0, d:0, l:0, gf:0, ga:0, gd:0, pts:0 }));
+        newMatches.forEach(m => {
+            if (m.hS !== null && m.aS !== null) {
+                const h = updatedTeams.find(t => t.id === m.home), a = updatedTeams.find(t => t.id === m.away);
                 if (h && a) {
-                    h.p++; a.p++; h.gf += match.hS; h.ga += match.aS; a.gf += match.aS; a.ga += match.hS;
-                    if (match.hS > match.aS) { h.w++; h.pts += 3; a.l++; }
-                    else if (match.hS < match.aS) { a.w++; a.pts += 3; h.l++; }
+                    h.p++; a.p++; h.gf += m.hS; h.ga += m.aS; a.gf += m.aS; a.ga += m.hS;
+                    if (m.hS > m.aS) { h.w++; h.pts += 3; a.l++; }
+                    else if (m.hS < m.aS) { a.w++; a.pts += 3; h.l++; }
                     else { h.d++; a.d++; h.pts += 1; a.pts += 1; }
                     h.gd = h.gf - h.ga; a.gd = a.gf - a.ga;
                 }
             }
         });
 
-        // Sync to Firebase
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'mainData'), { 
-            teams: updatedTeams, 
-            matches: state.matches
-        });
+        try {
+            await updateDoc(doc(db, ...MAIN_DATA_PATH), { teams: updatedTeams, matches: newMatches });
+        } catch (e) { console.error(e); }
     };
 
     function render() {
-        const getScoreClass = (s1, s2) => {
-            if (s1 === null || s2 === null) return 'text-zinc-600';
-            return s1 > s2 ? 'score-win' : (s1 < s2 ? 'score-loss' : 'score-draw');
-        };
+        const getScoreClass = (s1, s2) => s1 === null || s2 === null ? 'text-zinc-600' : (s1 > s2 ? 'score-win' : (s1 < s2 ? 'score-loss' : 'score-draw'));
 
-        // Rounds
-        for(let i=1; i<=3; i++) {
-            const b = document.getElementById(`round-${i}`);
-            if(b) b.className = `flex-1 min-w-[100px] py-3.5 rounded-xl text-[10px] font-black uppercase border border-white/5 transition-all ${state.activeRound === i ? 'bg-red-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-500'}`;
-        }
+        // Update Round Buttons
+        [1,2,3].forEach(i => {
+            const btn = document.getElementById(`round-${i}`);
+            if (btn) btn.className = `flex-1 min-w-[100px] py-3.5 rounded-xl text-[10px] font-black uppercase border border-white/5 transition-all ${state.activeRound === i ? 'bg-red-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-500'}`;
+            const aBtn = document.getElementById(`admin-rd-${i}`);
+            if (aBtn) aBtn.className = `flex-1 min-w-[80px] py-2.5 rounded-xl text-[9px] font-black uppercase border border-white/5 transition-all ${state.activeRound === i ? 'bg-red-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-500'}`;
+        });
 
-        // Public Fixtures
-        const fCont = document.getElementById('fixture-container');
+        // Fixtures (Public)
         const rdMatches = state.matches.filter(m => m.round === state.activeRound).sort((a,b) => a.group.localeCompare(b.group));
-        let lastG = "";
-        fCont.innerHTML = rdMatches.map(m => {
-            let html = "";
-            if (m.group !== lastG) {
-                lastG = m.group;
-                html = `<div class="pt-4 pb-2 text-[9px] font-black text-zinc-700 tracking-[0.4em] uppercase text-center italic">Group ${m.group}</div>`;
-            }
-            const h = state.teams.find(t=>t.id===m.home), a = state.teams.find(t=>t.id===m.away);
-            return html + `
-                <div class="glass-panel p-4 rounded-2xl flex items-center justify-between">
-                    <div class="flex-1 text-right pr-4 text-[11px] font-bold truncate">${h?.name || 'TBD'}</div>
-                    <div class="flex items-center space-x-1.5 shrink-0">
-                        <div class="score-box ${getScoreClass(m.hS, m.aS)}">${m.hS ?? '-'}</div>
-                        <div class="score-box ${getScoreClass(m.aS, m.hS)}">${m.aS ?? '-'}</div>
-                    </div>
-                    <div class="flex-1 text-left pl-4 text-[11px] font-bold truncate">${a?.name || 'TBD'}</div>
-                </div>`;
-        }).join('');
+        const fCont = document.getElementById('fixture-container');
+        if (rdMatches.length > 0) {
+            let lastG = "";
+            fCont.innerHTML = rdMatches.map(m => {
+                let header = m.group !== lastG ? `<div class="pt-4 pb-2 text-[9px] font-black text-zinc-700 tracking-[0.4em] uppercase text-center italic">Group ${m.group = (lastG = m.group, m.group)}</div>` : "";
+                const h = state.teams.find(t=>t.id===m.home), a = state.teams.find(t=>t.id===m.away);
+                return header + `<div class="glass-panel p-4 rounded-2xl flex items-center justify-between"><div class="flex-1 text-right pr-4 text-[11px] font-bold truncate">${h?.name}</div><div class="flex items-center space-x-1.5 shrink-0"><div class="score-box ${getScoreClass(m.hS, m.aS)}">${m.hS ?? '-'}</div><div class="score-box ${getScoreClass(m.aS, m.hS)}">${m.aS ?? '-'}</div></div><div class="flex-1 text-left pl-4 text-[11px] font-bold truncate">${a?.name}</div></div>`;
+            }).join('');
+        } else { fCont.innerHTML = `<div class="text-center py-10 text-zinc-700 text-[10px] uppercase font-bold tracking-widest">No Matches Yet</div>`; }
 
-        // Public Standings
+        // Standings (Public)
         const sCont = document.getElementById('standings-container');
-        sCont.innerHTML = G_NAMES.map(g => {
-            const gt = state.teams.filter(t => t.group === g).sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.ga);
-            if (gt.length === 0) return "";
-            return `
-                <div class="bg-zinc-900/30 rounded-3xl p-4 border border-white/5">
-                    <div class="flex justify-between items-center mb-3 px-2">
-                        <span class="text-[10px] font-black uppercase text-red-600 tracking-widest italic">Group ${g}</span>
-                    </div>
-                    <table class="standing-table text-[10px]">
-                        <thead><tr><th class="col-player">NAME</th><th>P</th><th>GD</th><th class="text-red-600">PTS</th></tr></thead>
-                        <tbody>${gt.map((t, i) => `
-                            <tr class="${i<2?'text-white':'text-zinc-500'}">
-                                <td class="col-player font-bold"><span class="opacity-20 mr-2 text-[8px]">${i+1}</span>${t.name}</td>
-                                <td>${t.p}</td>
-                                <td class="${t.gd>0?'text-green-500':(t.gd<0?'text-red-500':'')}">${t.gd>0?'+'+t.gd:t.gd}</td>
-                                <td class="font-black text-xs ${i<2?'text-red-600 neon-text':''}">${t.pts}</td>
-                            </tr>`).join('')}</tbody>
-                    </table>
-                </div>`;
+        const groups = G_NAMES.filter(g => state.teams.some(t => t.group === g));
+        sCont.innerHTML = groups.map(g => {
+            const gt = state.teams.filter(t => t.group === g).sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - b.ga);
+            return `<div class="bg-zinc-900/30 rounded-3xl p-4 border border-white/5"><div class="flex justify-between items-center mb-3 px-2"><span class="text-[10px] font-black uppercase text-red-600 tracking-widest italic">Group ${g}</span></div><table class="standing-table text-[10px]"><thead><tr><th class="col-player">NAME</th><th>P</th><th>GD</th><th class="text-red-600">PTS</th></tr></thead><tbody>${gt.map((t, i) => `<tr class="${i<2?'text-white':'text-zinc-500'}"><td class="col-player font-bold"><span class="opacity-20 mr-2 text-[8px]">${i+1}</span>${t.name}</td><td>${t.p}</td><td class="${t.gd>0?'text-green-500':(t.gd<0?'text-red-500':'')}">${t.gd>0?'+'+t.gd:t.gd}</td><td class="font-black text-xs ${i<2?'text-red-600 neon-text':''}">${t.pts}</td></tr>`).join('')}</tbody></table></div>`;
         }).join('');
 
-        // Admin Match List
+        // Matches (Admin Entry)
         const aMatches = document.getElementById('admin-matches');
         if (aMatches && state.isAdmin) {
-            aMatches.innerHTML = state.matches.map(m => {
+            aMatches.innerHTML = rdMatches.map(m => {
                 const h = state.teams.find(t=>t.id===m.home), a = state.teams.find(t=>t.id===m.away);
                 return `
-                    <div class="bg-zinc-950 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-                        <span class="text-[8px] font-black text-zinc-700 w-12">Grp ${m.group}</span>
-                        <div class="flex-1 flex items-center justify-center space-x-2">
-                            <span class="text-[10px] font-bold truncate w-20 text-right">${h?.name || 'TBD'}</span>
-                            <input type="number" value="${m.hS ?? ''}" onchange="updateScore(${m.id}, this.value, 'home')" class="w-10 h-10 bg-black rounded-lg text-center text-xs font-black border border-white/10">
-                            <input type="number" value="${m.aS ?? ''}" onchange="updateScore(${m.id}, this.value, 'away')" class="w-10 h-10 bg-black rounded-lg text-center text-xs font-black border border-white/10">
-                            <span class="text-[10px] font-bold truncate w-20 text-left">${a?.name || 'TBD'}</span>
+                    <div class="bg-zinc-950 p-4 rounded-2xl border border-white/5 flex flex-col space-y-3">
+                        <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                            <span class="text-[9px] font-black text-zinc-700 uppercase tracking-widest">Group ${m.group}</span>
+                            <span class="text-[8px] text-zinc-500 font-bold uppercase">Match ID #${m.id}</span>
+                        </div>
+                        <div class="flex items-center justify-between space-x-4">
+                            <div class="flex-1 text-right font-black text-xs truncate text-zinc-300">${h?.name}</div>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" value="${m.hS ?? ''}" oninput="updateScore(${m.id}, this.value, 'home')" class="admin-score-input" placeholder="0">
+                                <span class="text-zinc-700 font-black text-xs">VS</span>
+                                <input type="number" value="${m.aS ?? ''}" oninput="updateScore(${m.id}, this.value, 'away')" class="admin-score-input" placeholder="0">
+                            </div>
+                            <div class="flex-1 text-left font-black text-xs truncate text-zinc-300">${a?.name}</div>
                         </div>
                     </div>`;
             }).join('');
         }
     }
+</script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
 </script>
 </body>
 </html>
