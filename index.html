@@ -1,363 +1,478 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="my">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE ONE PRO LEAGUE - LIVE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE ONE PRO LEAGUE - Knockout Stage</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Outfit:wght@700;900&display=swap');
-
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        
         :root {
-            --neon-red: #ff003c;
-            --neon-glow: rgba(255, 0, 60, 0.5);
-            --neon-blue: #00e5ff;
-            --neon-blue-glow: rgba(0, 229, 255, 0.6);
-            --dark-bg: #050505;
-            --card-bg: #0f0f0f;
+            --primary-red: #ef4444;
+            --primary-green: #22c55e;
+            --primary-yellow: #eab308;
+            --dark-bg: #0a0a0a;
+            --card-bg: #111111;
+            --border-color: #262626;
         }
 
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--dark-bg); 
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--dark-bg);
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(239, 68, 68, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(239, 68, 68, 0.08) 0%, transparent 40%);
             color: #ffffff;
-            -webkit-tap-highlight-color: transparent;
+            margin: 0;
             overflow-x: hidden;
-            touch-action: manipulation;
         }
 
-        .heading-font { font-family: 'Outfit', sans-serif; }
+        .round-container {
+            display: none; 
+            animation: fadeIn 0.5s ease-out;
+        }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .round-container.active {
+            display: block;
+        }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .neon-text { text-shadow: 0 0 10px var(--neon-glow); }
-        .red-gradient { background: linear-gradient(135deg, #ff003c 0%, #bc002d 100%); }
-        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
-
-        .standing-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
-        .standing-table th { color: #555; font-size: 9px; text-transform: uppercase; padding: 12px 4px; letter-spacing: 0.1em; }
-        .standing-table td { background: rgba(255,255,255,0.02); padding: 12px 4px; text-align: center; }
-
-        .col-player { text-align: left !important; padding-left: 12px !important; width: 40%; }
-        .score-box {
-            background: #000;
-            width: 34px;
-            height: 34px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            font-weight: 900;
-            font-size: 14px;
-            border: 1px solid #222;
-        }
-
-        .score-win { color: #22c55e; border-color: rgba(34, 197, 94, 0.3); }
-        .score-loss { color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
-        .score-draw { color: #eab308; border-color: rgba(234, 179, 8, 0.3); }
-
-        .loading-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .nav-btn.active { background: var(--neon-red); color: white; box-shadow: 0 4px 15px var(--neon-glow); }
-        
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        
-        /* Floating Bubble Styling (Without Text Label) */
-        .result-bubble {
-            position: fixed;
-            bottom: 30px;
-            right: 25px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #001a2e 0%, #004e7c 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            cursor: pointer;
-            border: 2px solid var(--neon-blue);
-            user-select: none;
-            touch-action: none;
-            box-shadow: 0 0 15px var(--neon-blue-glow), inset 0 0 10px var(--neon-blue-glow);
-            animation: neon-pulse 2s infinite alternate;
-        }
-
-        .result-bubble:active { transform: scale(0.9); }
-
-        .neon-icon {
-            color: #fff;
-            filter: drop-shadow(0 0 5px var(--neon-blue));
-            font-size: 24px;
-            pointer-events: none;
-        }
-
-        @keyframes neon-pulse {
-            0% { box-shadow: 0 0 10px var(--neon-blue-glow), inset 0 0 5px var(--neon-blue-glow); border-color: rgba(0, 229, 255, 0.6); }
-            100% { box-shadow: 0 0 25px var(--neon-blue-glow), inset 0 0 15px var(--neon-blue-glow); border-color: rgba(0, 229, 255, 1); }
-        }
-
-        .admin-score-input {
-            width: 45px;
-            height: 45px;
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 12px;
+        .round-title {
             text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: var(--primary-red);
+            font-weight: 800;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            padding: 1rem 0;
+            border-bottom: 2px solid var(--primary-red);
+            text-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .matchup {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .match-badge {
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: var(--primary-red);
+            color: white;
+            font-size: 0.65rem;
             font-weight: 900;
-            font-size: 16px;
-            color: #fff;
-            outline: none;
+            padding: 2px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .score-box {
+            min-width: 32px;
+            height: 32px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .score-win { color: var(--primary-green) !important; border-color: rgba(34, 197, 94, 0.3) !important; }
+        .score-lose { color: var(--primary-red) !important; border-color: rgba(239, 68, 68, 0.3) !important; }
+        .score-draw { color: var(--primary-yellow) !important; border-color: rgba(234, 179, 8, 0.3) !important; }
+
+        .nav-btn {
+            padding: 0.75rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .hidden-view { display: none !important; }
+        
+        .admin-score-input {
+            width: 50px;
+            height: 40px;
+            background: #000;
+            border: 1px solid #444;
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: 800;
+        }
+
+        #auth-modal {
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--dark-bg);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s;
         }
     </style>
 </head>
-<body class="no-scrollbar pb-24">
+<body>
 
-<div id="loading-screen" class="loading-screen">
-    <div class="w-12 h-12 border-4 border-zinc-800 border-t-red-600 rounded-full animate-spin mb-4"></div>
-    <p class="text-[10px] font-black tracking-[0.3em] text-zinc-500 uppercase">Live Synchronizing</p>
+<div id="loading" class="loading-overlay">
+    <div class="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+    <div class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Connecting to database...</div>
 </div>
 
-<!-- Draggable Floating Neon Bubble (Telegram Link Only) -->
-<div id="draggable-bubble" class="result-bubble">
-    <i class="fab fa-telegram-plane neon-icon"></i>
-</div>
-
-<!-- Admin Login Modal -->
-<div id="admin-modal" class="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-6 hidden">
-    <div class="w-full max-w-xs space-y-6">
-        <div class="text-center">
-            <h2 class="heading-font text-xl uppercase italic">Admin <span class="text-red-600">Access</span></h2>
-            <p class="text-[9px] text-zinc-500 tracking-widest mt-1 uppercase">Enter Code to Edit</p>
-        </div>
-        <input type="password" id="adminPass" class="w-full bg-zinc-900 border border-white/10 rounded-2xl p-4 text-center tracking-[1em] outline-none focus:border-red-600 transition-all" placeholder="••••">
-        <button onclick="handleLogin()" class="w-full red-gradient p-4 rounded-2xl font-black uppercase text-xs shadow-lg">Login</button>
-        <button onclick="toggleModal('admin-modal', false)" class="w-full text-zinc-600 text-[10px] font-bold uppercase">Cancel</button>
-    </div>
-</div>
-
-<header class="sticky top-0 z-40 bg-black/80 backdrop-blur-lg border-b border-white/5 px-6 py-5">
-    <div class="flex justify-between items-center">
-        <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 red-gradient rounded-xl flex items-center justify-center shadow-2xl">
-                <i class="fas fa-bolt text-white text-lg"></i>
-            </div>
-            <div>
-                <h1 class="heading-font text-lg leading-none tracking-tight italic">THE ONE <span class="text-red-600">PRO</span></h1>
-                <p class="text-[8px] text-zinc-500 font-black tracking-[0.2em] uppercase mt-1">Real-time League Table</p>
-            </div>
-        </div>
-        <div class="flex bg-zinc-900 p-1 rounded-xl">
-            <button onclick="switchTab('user-view')" id="nav-user" class="nav-btn active px-5 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all">Public</button>
-            <button onclick="checkAdminAuth()" id="nav-admin" class="nav-btn px-5 py-2.5 rounded-lg text-[10px] font-black uppercase text-zinc-500 transition-all">Admin</button>
-        </div>
+<header class="pt-12 pb-6 text-center px-4">
+    <h1 class="text-4xl font-extrabold mb-2 tracking-tighter text-white uppercase italic">THE ONE PRO LEAGUE</h1>
+    <p class="text-red-500 font-bold text-[10px] uppercase tracking-[0.4em]">Knockout Stage</p>
+    <div class="flex justify-center gap-3 mt-6">
+        <button onclick="toggleMainView('bracket')" id="bracket-btn" class="px-6 py-2 rounded-lg bg-red-600 text-white font-bold text-[10px] uppercase tracking-widest transition-all">Bracket View</button>
+        <button onclick="checkAdminAuth()" id="admin-btn" class="px-6 py-2 rounded-lg bg-neutral-900 text-neutral-500 font-bold text-[10px] uppercase tracking-widest transition-all">Admin Panel</button>
     </div>
 </header>
 
-<main class="p-5 max-w-2xl mx-auto">
-    <!-- User View -->
-    <section id="user-view" class="tab-content active">
-        <div id="group-section">
-            <div class="flex space-x-2 overflow-x-auto no-scrollbar mb-8">
-                <button onclick="setRound(1)" id="round-1" class="flex-1 min-w-[100px] py-3.5 rounded-xl text-[10px] font-black uppercase border border-white/5 transition-all">Round 1</button>
-                <button onclick="setRound(2)" id="round-2" class="flex-1 min-w-[100px] py-3.5 rounded-xl text-[10px] font-black uppercase border border-white/5 transition-all">Round 2</button>
-                <button onclick="setRound(3)" id="round-3" class="flex-1 min-w-[100px] py-3.5 rounded-xl text-[10px] font-black uppercase border border-white/5 transition-all">Round 3</button>
-            </div>
-
-            <div class="space-y-10">
-                <div>
-                    <div class="flex items-center justify-between mb-4 px-2">
-                        <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-red-600 italic">Match Schedule</h3>
-                        <div class="h-[1px] flex-1 bg-zinc-800 ml-4"></div>
-                    </div>
-                    <div id="fixture-container" class="space-y-4"></div>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-4 px-2">
-                        <h3 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 italic">League Standings</h3>
-                        <div class="h-[1px] flex-1 bg-zinc-800 ml-4"></div>
-                    </div>
-                    <div id="standings-container" class="space-y-8"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Admin Panel -->
-    <section id="admin-panel" class="tab-content space-y-8">
-        <div class="glass-panel rounded-[2rem] p-8">
-            <h3 class="text-xs font-black uppercase text-red-600 mb-6 tracking-widest">Admin Dashboard</h3>
-            <p class="text-[10px] text-zinc-500 mb-2 uppercase">Bulk Player Import</p>
-            <textarea id="playerInput" rows="5" class="w-full bg-black border border-white/10 rounded-2xl p-5 text-xs text-zinc-300 mb-6 outline-none focus:border-red-600" placeholder="Enter 48 names..."></textarea>
-            <button onclick="initLeague()" class="w-full red-gradient py-4 rounded-xl text-[10px] font-black uppercase">Draw & Sync New League</button>
-        </div>
-        <div id="admin-matches" class="space-y-4"></div>
-    </section>
+<main id="bracket-view" class="max-w-xl mx-auto px-4 pb-24">
+    <div id="rounds-wrapper"></div>
+    
+    <div class="flex justify-between items-center mt-8 pt-6 border-t border-neutral-800">
+        <button id="prev-round" onclick="changeRound(-1)" class="nav-btn bg-neutral-800 text-neutral-400">ရှေ့သို့</button>
+        <div id="round-indicator" class="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">အဆင့် ၁ / ၅</div>
+        <button id="next-round" onclick="changeRound(1)" class="nav-btn bg-red-600 text-white shadow-lg shadow-red-900/20">နောက်တစ်ဆင့်</button>
+    </div>
 </main>
 
+<div id="admin-view" class="hidden-view px-4 pb-24 max-w-2xl mx-auto">
+    <div class="bg-[#111] border border-neutral-800 rounded-3xl p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-black text-white uppercase italic">ရမှတ်များ စာရင်းသွင်းရန်</h2>
+            <button onclick="logoutAdmin()" class="text-[9px] font-bold text-neutral-600 hover:text-red-500 uppercase tracking-widest">Logout</button>
+        </div>
+        <div id="admin-match-list" class="space-y-4"></div>
+    </div>
+</div>
+
+<div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-neutral-900 border border-neutral-800 p-8 rounded-3xl w-full max-sm shadow-2xl">
+        <div class="text-center mb-6">
+            <div class="inline-block p-3 rounded-full bg-red-600/10 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3 class="text-lg font-bold text-white">Admin Access</h3>
+            <p class="text-neutral-500 text-xs mt-1">ရှေ့ဆက်ရန် Password ရိုက်ထည့်ပါ</p>
+        </div>
+        <input type="password" id="admin-pw" placeholder="••••" class="w-full bg-black border border-neutral-800 rounded-xl p-4 text-center text-2xl font-bold text-red-500 tracking-[0.5em] focus:border-red-600 focus:outline-none mb-4">
+        <div class="flex gap-2">
+            <button onclick="closeAuthModal()" class="flex-1 py-3 rounded-xl bg-neutral-800 text-neutral-400 font-bold text-xs uppercase">Cancel</button>
+            <button onclick="verifyPassword()" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-xs uppercase shadow-lg shadow-red-900/20">Login</button>
+        </div>
+        <p id="auth-error" class="text-red-500 text-[10px] font-bold text-center mt-4 hidden">Password မှားယွင်းနေပါသည်။ ပြန်ကြိုးစားပါ။</p>
+    </div>
+</div>
+
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyBO_TmNXPkY2-vvDtcP8j7YX6HU-8lRpV4",
-        authDomain: "theoneproleague.firebaseapp.com",
-        projectId: "theoneproleague",
-        appId: "1:983758717301:web:cac06eddc7160a2049133c"
+        apiKey: "AIzaSyAO0oWLqJ_YoQgEeBkQakEXcw8-VF7wY7I",
+        authDomain: "proleagues2.firebaseapp.com",
+        projectId: "proleagues2",
+        storageBucket: "proleagues2.firebasestorage.app",
+        messagingSenderId: "178428206580",
+        appId: "1:178428206580:web:ff78031a09446951a96da1",
+        measurementId: "G-9Y219BTFW9"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const auth = getAuth(app);
-    const appId = "the-one-pro-league-v1";
-    const G_NAMES = "ABCDEFGHIJKL".split("");
-    const MAIN_DATA_PATH = ['artifacts', appId, 'public', 'data', 'leagueData', 'current'];
+    const tournamentDocRef = doc(db, "tournaments", "efootball_main_v3"); // Version 3 for clean names
 
-    let state = {
-        teams: [],
-        matches: [],
-        activeRound: 1,
-        isAdmin: false,
-        user: null
-    };
+    const ADMIN_PASSWORD = "1234";
+    let isAdminAuthenticated = false;
+    let currentActiveRound = 0;
+    let tournamentData = {};
 
-    // --- Draggable Bubble Logic (Updated) ---
-    const bubble = document.getElementById('draggable-bubble');
-    let isDragging = false;
-    let currentX = 0;
-    let currentY = 0;
-    let initialX;
-    let initialY;
-    let xOffset = 0;
-    let yOffset = 0;
-    let dragStartTime;
-    let hasMoved = false;
+    // Group indicators များ ဖြုတ်ထားသော Player စာရင်း
+    const initialPlayers = [
+        "Phyo Lay", "Pi Juu", 
+        "Ye Naung", "Khant", 
+        "Bo Kyaw Ye", "Nau Mung", 
+        "Sann Ye Linn", "Yami", 
+        "Pyae Sone Hein", "FLOCK", 
+        "Thue Won Phyoe", "James", 
+        "Aung Thiha", "Arr Bhar", 
+        "Zayar Hein", "Nyan Linn Aung", 
+        "PSTW", "Extra", 
+        "Thant Zin Oo", "Kyaw Gyi", 
+        "阿伟", "Wanna Aung", 
+        "Kaung Khant Shin", "Htin Shar",
+        "JEFFREY", "Thein Htike",
+        "မောင်မောင်", "Jaff",
+        "Thar Chit", "Sink",
+        "Khant Shinn", "Poe Yoe"
+    ];
 
-    function dragStart(e) {
-        dragStartTime = Date.now();
-        hasMoved = false;
-        if (e.type === "touchstart") {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-        } else {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-        }
-        if (e.target === bubble || bubble.contains(e.target)) isDragging = true;
-    }
+    const roundsData = [
+        { name: "Round of 32", matches: 16, type: "home-away" },
+        { name: "Round of 16", matches: 8, type: "home-away" },
+        { name: "Quarter Final", matches: 4, type: "home-away" },
+        { name: "Semi Final", matches: 2, type: "home-away" },
+        { name: "Grand Final", matches: 1, type: "single" }
+    ];
 
-    function dragEnd(e) {
-        const dragDuration = Date.now() - dragStartTime;
-        initialX = currentX;
-        initialY = currentY;
-        isDragging = false;
-
-        // Click detection: It's a click if duration is short and it hasn't moved much
-        if (!hasMoved || dragDuration < 150) {
-            window.open('https://t.me/agust_nadi', '_blank');
-        }
-    }
-
-    function drag(e) {
-        if (isDragging) {
-            e.preventDefault();
-            hasMoved = true;
-            if (e.type === "touchmove") {
-                currentX = e.touches[0].clientX - initialX;
-                currentY = e.touches[0].clientY - initialY;
+    function initApp() {
+        createBracketUI();
+        
+        onSnapshot(tournamentDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                tournamentData = docSnap.data();
+                syncDataToUI();
             } else {
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
+                setupInitialData();
             }
-            xOffset = currentX;
-            yOffset = currentY;
-            bubble.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
-        }
-    }
-
-    bubble.addEventListener("touchstart", dragStart, {passive: false});
-    bubble.addEventListener("touchend", dragEnd, {passive: false});
-    bubble.addEventListener("touchmove", drag, {passive: false});
-    bubble.addEventListener("mousedown", dragStart, false);
-    bubble.addEventListener("mouseup", dragEnd, false);
-    bubble.addEventListener("mousemove", drag, false);
-
-    // --- Firebase Logic ---
-    const initAuth = async () => { try { await signInAnonymously(auth); } catch (e) { console.error(e); } };
-    onAuthStateChanged(auth, (user) => { state.user = user; if (user) setupRealtimeListener(); });
-    initAuth();
-
-    function setupRealtimeListener() {
-        const docRef = doc(db, ...MAIN_DATA_PATH);
-        onSnapshot(docRef, (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                state.teams = data.teams || [];
-                state.matches = data.matches || [];
-                render();
-            }
-            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('loading').style.opacity = '0';
+            setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
         });
     }
 
-    window.switchTab = (id) => {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        render();
-    };
-
-    window.toggleModal = (id, show) => document.getElementById(id).classList.toggle('hidden', !show);
-    window.checkAdminAuth = () => state.isAdmin ? switchTab('admin-panel') : toggleModal('admin-modal', true);
-    window.handleLogin = () => {
-        if (document.getElementById('adminPass').value === "1234") {
-            state.isAdmin = true;
-            toggleModal('admin-modal', false);
-            switchTab('admin-panel');
-        } else alert("မှားယွင်းနေပါသည်။");
-    };
-
-    window.setRound = (r) => { state.activeRound = r; render(); };
-
-    function render() {
-        const getScoreClass = (s1, s2) => s1 === null || s2 === null ? 'text-zinc-600' : (s1 > s2 ? 'score-win' : (s1 < s2 ? 'score-loss' : 'score-draw'));
-
-        [1,2,3].forEach(i => {
-            const btn = document.getElementById(`round-${i}`);
-            if (btn) btn.className = `flex-1 min-w-[100px] py-3.5 rounded-xl text-[10px] font-black uppercase border border-white/5 transition-all ${state.activeRound === i ? 'bg-red-600 text-white shadow-lg' : 'bg-zinc-900 text-zinc-500'}`;
+    async function setupInitialData() {
+        const data = { rounds: [] };
+        roundsData.forEach((round, rIdx) => {
+            const matches = [];
+            for (let i = 0; i < round.matches; i++) {
+                matches.push({
+                    t1name: rIdx === 0 ? (initialPlayers[i * 2] || "") : "",
+                    t2name: rIdx === 0 ? (initialPlayers[i * 2 + 1] || "") : "",
+                    t1s1: 0, t1s2: 0, t2s1: 0, t2s2: 0
+                });
+            }
+            data.rounds.push({ matches });
         });
+        await setDoc(tournamentDocRef, data);
+    }
 
-        const rdMatches = state.matches.filter(m => m.round === state.activeRound).sort((a,b) => a.group.localeCompare(b.group));
-        const fCont = document.getElementById('fixture-container');
-        if (fCont) {
-            let lastG = "";
-            fCont.innerHTML = rdMatches.map(m => {
-                let header = m.group !== lastG ? `<div class="pt-4 pb-2 text-[9px] font-black text-zinc-700 tracking-[0.4em] uppercase text-center italic">Group ${m.group = (lastG = m.group, m.group)}</div>` : "";
-                const h = state.teams.find(t=>t.id===m.home), a = state.teams.find(t=>t.id===m.away);
-                return header + `<div class="glass-panel p-4 rounded-2xl flex items-center justify-between"><div class="flex-1 text-right pr-4 text-[11px] font-bold truncate">${h?.name}</div><div class="flex items-center space-x-1.5 shrink-0"><div class="score-box ${getScoreClass(m.hS, m.aS)}">${m.hS ?? '-'}</div><div class="score-box ${getScoreClass(m.aS, m.hS)}">${m.aS ?? '-'}</div></div><div class="flex-1 text-left pl-4 text-[11px] font-bold truncate">${a?.name}</div></div>`;
-            }).join('');
-        }
-
-        const sCont = document.getElementById('standings-container');
-        if (sCont) {
-            const groups = G_NAMES.filter(g => state.teams.some(t => t.group === g));
-            sCont.innerHTML = groups.map(g => {
-                const gt = state.teams.filter(t => t.group === g).sort((a,b) => b.pts - a.pts || b.gd - a.gd);
-                return `<div class="bg-zinc-900/30 rounded-3xl p-4 border border-white/5"><div class="flex justify-between items-center mb-3 px-2"><span class="text-[10px] font-black uppercase text-red-600 tracking-widest italic">Group ${g}</span></div><table class="standing-table text-[10px]"><thead><tr><th class="col-player">NAME</th><th>P</th><th>GD</th><th class="text-red-600">PTS</th></tr></thead><tbody>${gt.map((t, i) => `<tr class="${i<2?'text-white':'text-zinc-500'}"><td class="col-player font-bold"><span class="opacity-20 mr-2 text-[8px]">${i+1}</span>${t.name}</td><td>${t.p}</td><td class="${t.gd>0?'text-green-500':(t.gd<0?'text-red-500':'')}">${t.gd>0?'+'+t.gd:t.gd}</td><td class="font-black text-xs ${i<2?'text-red-600 neon-text':''}">${t.pts}</td></tr>`).join('')}</tbody></table></div>`;
-            }).join('');
+    function syncDataToUI() {
+        tournamentData.rounds.forEach((round, rIdx) => {
+            round.matches.forEach((match, mIdx) => {
+                const isFinal = roundsData[rIdx].type === "single";
+                updateElement(`r${rIdx}m${mIdx}t1name`, match.t1name, 'val');
+                updateElement(`r${rIdx}m${mIdx}t2name`, match.t2name, 'val');
+                updateElement(`r${rIdx}m${mIdx}t1s1-disp`, match.t1s1);
+                updateElement(`r${rIdx}m${mIdx}t2s1-disp`, match.t2s1);
+                if (!isFinal) {
+                    updateElement(`r${rIdx}m${mIdx}t1s2-disp`, match.t1s2);
+                    updateElement(`r${rIdx}m${mIdx}t2s2-disp`, match.t2s2);
+                }
+                applyColoring(rIdx, mIdx);
+            });
+        });
+        if (!document.getElementById('admin-view').classList.contains('hidden-view')) {
+            generateAdminList();
         }
     }
+
+    function updateElement(id, val, type = 'text') {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (type === 'val') el.value = val;
+        else el.innerText = val;
+    }
+
+    window.toggleMainView = (view) => {
+        const bracketBtn = document.getElementById('bracket-btn');
+        const adminBtn = document.getElementById('admin-btn');
+        if(view === 'bracket') {
+            document.getElementById('bracket-view').classList.remove('hidden-view');
+            document.getElementById('admin-view').classList.add('hidden-view');
+            bracketBtn.classList.replace('bg-neutral-900', 'bg-red-600');
+            bracketBtn.classList.replace('text-neutral-500', 'text-white');
+            adminBtn.classList.replace('bg-red-600', 'bg-neutral-900');
+            adminBtn.classList.replace('text-white', 'text-neutral-500');
+        } else {
+            document.getElementById('bracket-view').classList.add('hidden-view');
+            document.getElementById('admin-view').classList.remove('hidden-view');
+            adminBtn.classList.replace('bg-neutral-900', 'bg-red-600');
+            adminBtn.classList.replace('text-neutral-500', 'text-white');
+            bracketBtn.classList.replace('bg-red-600', 'bg-neutral-900');
+            bracketBtn.classList.replace('text-white', 'text-neutral-500');
+            generateAdminList();
+        }
+    };
+
+    window.checkAdminAuth = () => {
+        if (isAdminAuthenticated) toggleMainView('admin');
+        else {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            document.getElementById('admin-pw').focus();
+        }
+    };
+
+    window.closeAuthModal = () => {
+        document.getElementById('auth-modal').classList.add('hidden');
+        document.getElementById('admin-pw').value = '';
+    };
+
+    window.verifyPassword = () => {
+        if (document.getElementById('admin-pw').value === ADMIN_PASSWORD) {
+            isAdminAuthenticated = true;
+            closeAuthModal();
+            toggleMainView('admin');
+        } else {
+            document.getElementById('auth-error').classList.remove('hidden');
+        }
+    };
+
+    window.logoutAdmin = () => {
+        isAdminAuthenticated = false;
+        toggleMainView('bracket');
+    };
+
+    window.changeRound = (dir) => {
+        const newRound = currentActiveRound + dir;
+        if(newRound >= 0 && newRound < roundsData.length) {
+            document.getElementById(`round-container-${currentActiveRound}`).classList.remove('active');
+            currentActiveRound = newRound;
+            document.getElementById(`round-container-${currentActiveRound}`).classList.add('active');
+            updateNavButtons();
+            window.scrollTo(0,0);
+        }
+    };
+
+    function createBracketUI() {
+        const wrapper = document.getElementById('rounds-wrapper');
+        wrapper.innerHTML = '';
+        roundsData.forEach((round, rIdx) => {
+            const container = document.createElement('div');
+            container.className = `round-container ${rIdx === 0 ? 'active' : ''}`;
+            container.id = `round-container-${rIdx}`;
+            let html = `<div class="round-title">${round.name}</div><div class="grid gap-4">`;
+            for (let i = 0; i < round.matches; i++) {
+                const isFinal = round.type === "single";
+                html += `
+                    <div class="matchup">
+                        <div class="match-badge">Match ${i+1}</div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <input type="text" readonly class="bg-transparent border-b border-neutral-800 font-bold text-xs outline-none w-[60%]" id="r${rIdx}m${i}t1name">
+                                <div class="flex gap-1">
+                                    <div class="score-box" id="r${rIdx}m${i}t1s1-disp">0</div>
+                                    ${!isFinal ? `<div class="score-box" id="r${rIdx}m${i}t1s2-disp">0</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <input type="text" readonly class="bg-transparent border-b border-neutral-800 font-bold text-xs outline-none w-[60%]" id="r${rIdx}m${i}t2name">
+                                <div class="flex gap-1">
+                                    <div class="score-box" id="r${rIdx}m${i}t2s1-disp">0</div>
+                                    ${!isFinal ? `<div class="score-box" id="r${rIdx}m${i}t2s2-disp">0</div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+            wrapper.appendChild(container);
+        });
+        updateNavButtons();
+    }
+
+    function generateAdminList() {
+        const list = document.getElementById('admin-match-list');
+        if (!tournamentData.rounds) return;
+        list.innerHTML = `<div class="text-red-500 font-bold text-[10px] mb-4 uppercase tracking-tighter">ပြင်ဆင်နေသည့်အဆင့်: ${roundsData[currentActiveRound].name}</div>`;
+        const round = tournamentData.rounds[currentActiveRound];
+        const rIdx = currentActiveRound;
+        round.matches.forEach((match, mIdx) => {
+            const isFinal = roundsData[rIdx].type === "single";
+            const div = document.createElement('div');
+            div.className = "p-4 bg-black/20 border border-neutral-800 rounded-xl flex items-center justify-between gap-2";
+            div.innerHTML = `
+                <div class="text-[10px] font-bold w-1/3 truncate">${match.t1name || '?'} vs ${match.t2name || '?'}</div>
+                <div class="flex gap-2">
+                    <div class="flex gap-1">
+                        <input type="number" class="admin-score-input" value="${match.t1s1}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't1s1', this.value)">
+                        ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t1s2}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't1s2', this.value)">` : ''}
+                    </div>
+                    <div class="flex gap-1">
+                        <input type="number" class="admin-score-input" value="${match.t2s1}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't2s1', this.value)">
+                        ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t2s2}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't2s2', this.value)">` : ''}
+                    </div>
+                </div>`;
+            list.appendChild(div);
+        });
+    }
+
+    window.updateFirebaseScore = async (r, m, field, val) => {
+        tournamentData.rounds[r].matches[m][field] = parseInt(val) || 0;
+        if (r < roundsData.length - 1) {
+            const match = tournamentData.rounds[r].matches[m];
+            const t1total = match.t1s1 + (match.t1s2 || 0);
+            const t2total = match.t2s1 + (match.t2s2 || 0);
+            const winner = t1total > t2total ? match.t1name : (t2total > t1total ? match.t2name : "");
+            if (winner) {
+                const nextRound = r + 1;
+                const nextMatch = Math.floor(m / 2);
+                const teamSlot = (m % 2 === 0) ? 't1name' : 't2name';
+                tournamentData.rounds[nextRound].matches[nextMatch][teamSlot] = winner;
+            }
+        }
+        await setDoc(tournamentDocRef, tournamentData);
+    };
+
+    function applyColoring(r, m) {
+        const isFinal = roundsData[r].type === "single";
+        const compare = (s1, s2, el1, el2) => {
+            el1?.classList.remove('score-win', 'score-lose', 'score-draw');
+            el2?.classList.remove('score-win', 'score-lose', 'score-draw');
+            if (s1 > s2) { el1.classList.add('score-win'); el2.classList.add('score-lose'); }
+            else if (s2 > s1) { el2.classList.add('score-win'); el1.classList.add('score-lose'); }
+            else { el1.classList.add('score-draw'); el2.classList.add('score-draw'); }
+        };
+        const t1s1 = parseInt(document.getElementById(`r${r}m${m}t1s1-disp`)?.innerText || 0);
+        const t2s1 = parseInt(document.getElementById(`r${r}m${m}t2s1-disp`)?.innerText || 0);
+        compare(t1s1, t2s1, document.getElementById(`r${r}m${m}t1s1-disp`), document.getElementById(`r${r}m${m}t2s1-disp`));
+        if(!isFinal) {
+            const t1s2 = parseInt(document.getElementById(`r${r}m${m}t1s2-disp`)?.innerText || 0);
+            const t2s2 = parseInt(document.getElementById(`r${r}m${m}t2s2-disp`)?.innerText || 0);
+            compare(t1s2, t2s2, document.getElementById(`r${r}m${m}t1s2-disp`), document.getElementById(`r${r}m${m}t2s2-disp`));
+        }
+    }
+
+    function updateNavButtons() {
+        document.getElementById('prev-round').disabled = currentActiveRound === 0;
+        document.getElementById('next-round').disabled = currentActiveRound === roundsData.length - 1;
+        document.getElementById('round-indicator').innerText = `အဆင့် ${currentActiveRound + 1} / ${roundsData.length}`;
+    }
+
+    initApp();
 </script>
 </body>
 </html>
