@@ -213,14 +213,14 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const tournamentDocRef = doc(db, "tournaments", "efootball_main_v3"); // Version 3 for clean names
+    const tournamentDocRef = doc(db, "tournaments", "efootball_main_v4"); // New version for player change
 
     const ADMIN_PASSWORD = "1234";
     let isAdminAuthenticated = false;
     let currentActiveRound = 0;
     let tournamentData = {};
 
-    // Group indicators များ ဖြုတ်ထားသော Player စာရင်း
+    // Jaff ကို Shar Htet Aung ဖြင့် အစားထိုးထားသော Player စာရင်း
     const initialPlayers = [
         "Phyo Lay", "Pi Juu", 
         "Ye Naung", "Khant", 
@@ -235,7 +235,7 @@
         "阿伟", "Wanna Aung", 
         "Kaung Khant Shin", "Htin Shar",
         "JEFFREY", "Thein Htike",
-        "မောင်မောင်", "Shar Htet Aung",
+        "မောင်မောင်", "Shar Htet Aung", // Jaff changed to Shar Htet Aung
         "Thar Chit", "Sink",
         "Khant Shinn", "Poe Yoe"
     ];
