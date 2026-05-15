@@ -63,9 +63,33 @@
             background: linear-gradient(90deg, rgba(255,0,60,0.1) 0%, transparent 100%);
             border-left: 3px solid var(--neon-red);
         }
+
+        #floating-tg {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 55px;
+            height: 55px;
+            background: #0088cc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+            cursor: grab;
+            z-index: 999;
+            touch-action: none;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #floating-tg:active { cursor: grabbing; transform: scale(0.9); }
+        #floating-tg i { color: white; font-size: 24px; }
     </style>
 </head>
 <body class="no-scrollbar pb-24">
+
+<div id="floating-tg">
+    <i class="fab fa-telegram-plane"></i>
+</div>
 
 <div id="loading-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
     <div class="w-12 h-12 border-4 border-zinc-800 border-t-red-600 rounded-full animate-spin mb-4"></div>
@@ -364,7 +388,75 @@
     };
     window.setRound = (r) => { state.activeRound = r; render(); };
 
-    window.onload = initLeague;
+    const dragElement = (el) => {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        const dragStart = (e) => {
+            isDragging = false;
+            e = e || window.event;
+            const clientX = e.type === "touchstart" ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === "touchstart" ? e.touches[0].clientY : e.clientY;
+            startX = clientX;
+            startY = clientY;
+            pos3 = clientX;
+            pos4 = clientY;
+            document.onmouseup = dragEnd;
+            document.ontouchend = dragEnd;
+            document.onmousemove = elementDrag;
+            document.ontouchmove = elementDrag;
+        };
+
+        const elementDrag = (e) => {
+            e = e || window.event;
+            const clientX = e.type === "touchmove" ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === "touchmove" ? e.touches[0].clientY : e.clientY;
+            
+            // Check if user is actually dragging (more than 5px movement)
+            if (Math.abs(clientX - startX) > 5 || Math.abs(clientY - startY) > 5) {
+                isDragging = true;
+            }
+
+            pos1 = pos3 - clientX;
+            pos2 = pos4 - clientY;
+            pos3 = clientX;
+            pos4 = clientY;
+            
+            // Keep button within screen bounds
+            let newTop = el.offsetTop - pos2;
+            let newLeft = el.offsetLeft - pos1;
+            
+            const margin = 10;
+            newTop = Math.max(margin, Math.min(newTop, window.innerHeight - el.offsetHeight - margin));
+            newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth - el.offsetWidth - margin));
+
+            el.style.top = newTop + "px";
+            el.style.left = newLeft + "px";
+            el.style.bottom = "auto";
+            el.style.right = "auto";
+        };
+
+        const dragEnd = () => {
+            document.onmouseup = null;
+            document.ontouchend = null;
+            document.onmousemove = null;
+            document.ontouchmove = null;
+
+            // If not dragged, treat as a click
+            if (!isDragging) {
+                window.open("https://t.me/agust_nadi", "_blank");
+            }
+        };
+
+        el.onmousedown = dragStart;
+        el.ontouchstart = dragStart;
+    };
+
+    window.onload = () => {
+        initLeague();
+        dragElement(document.getElementById("floating-tg"));
+    };
 </script>
 </body>
 </html>
