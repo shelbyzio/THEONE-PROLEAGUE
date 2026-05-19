@@ -152,9 +152,9 @@
 
 <header class="pt-8 pb-4 text-center px-4">
     <div class="flex justify-center mb-3">
-        <!-- Local Mode Badge Indicator -->
-        <span id="db-status-badge" class="px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-emerald-950/40 text-emerald-400 border-emerald-800/40">
-            🟢 Local Storage Mode
+        <!-- Static Mode Badge Indicator -->
+        <span id="db-status-badge" class="px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-red-950/40 text-red-400 border-red-800/40">
+            🔴 Code-Defined Fixtures Mode
         </span>
     </div>
     <h1 class="text-4xl font-extrabold mb-2 tracking-tighter text-white uppercase italic">PRO LEAGUE</h1>
@@ -183,12 +183,12 @@
 <div id="admin-view" class="hidden-view px-4 pb-24 max-w-2xl mx-auto">
     <div class="bg-[#111] border border-neutral-800 rounded-3xl p-6">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-black text-white uppercase italic">ရမှတ်များ စာရင်းသွင်းရန်</h2>
+            <h2 class="text-xl font-black text-white uppercase italic">ရမှတ်များ စမ်းသပ်ရန်</h2>
             <button onclick="logoutAdmin()" class="text-[9px] font-bold text-neutral-600 hover:text-red-500 uppercase tracking-widest">Logout</button>
         </div>
         <div class="mb-6">
             <button id="reset-btn" onclick="resetTournament()" class="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-900/20">
-                မူလရမှတ်များအတိုင်း ပြန်လည်စတင်မည် (Reset Bracket)
+                မူလကုဒ်ပါ Fixtures အတိုင်း ပြန်လည်သတ်မှတ်မည် (Reset Bracket)
             </button>
         </div>
         <div id="admin-match-list" class="space-y-4"></div>
@@ -214,9 +214,8 @@
 </div>
 
 <script>
-    // Config & Local Storage State
+    // Config & Memory State
     const ADMIN_PASSWORD = "1234";
-    const LOCAL_STORAGE_KEY = "efootball_tournament_local_backup";
     let isAdminAuthenticated = false;
     let currentActiveRound = 0;
     let tournamentData = {};
@@ -251,7 +250,7 @@
 
     function initApp() {
         createBracketUI();
-        loadLocalTournamentData();
+        setupStaticTournamentData();
         hideLoadingScreen();
     }
 
@@ -261,20 +260,10 @@
         setTimeout(() => loading.style.display = 'none', 500);
     }
 
-    // Load data from Local Storage or generate with initial scores
-    function loadLocalTournamentData() {
-        const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (localData) {
-            try {
-                tournamentData = JSON.parse(localData);
-                syncDataToUI();
-            } catch (e) {
-                console.error("Local Storage error, resetting to initial data", e);
-                setupInitialDataLocal();
-            }
-        } else {
-            setupInitialDataLocal();
-        }
+    // Direct initialization of code-defined data structure
+    function setupStaticTournamentData() {
+        tournamentData = generateCleanInitialData();
+        syncDataToUI();
     }
 
     // Initialize data structure with pre-set scores
@@ -298,7 +287,7 @@
             { t1s1: 3, t1s2: 5, t2s1: 4, t2s2: 5 },   // Match 13
             { t1s1: 6, t1s2: 2, t2s1: 1, t2s2: 0 },   // Match 14
             { t1s1: 1, t1s2: 6, t2s1: 5, t2s2: 3 },   // Match 15
-            { t1s1: 0, t1s2: 0, t2s1: 0, t2s2: 0 }    // Match 16
+            { t1s1: 0, t1s2: 0, t2s1: 3, t2s2: 3 }    // Match 16 (Updated: Zaw Phyo Thu vs Van Cro)
         ];
 
         roundsData.forEach((round, rIdx) => {
@@ -327,6 +316,21 @@
         });
 
         // Run auto progression calculation for Round of 16 and subsequent rounds
+        recalculateProgression(data);
+
+        return data;
+    }
+
+    function recalculateProgression(data) {
+        // Clear subsequent rounds progression first to avoid duplicate propagation
+        for (let r = 1; r < data.rounds.length; r++) {
+            data.rounds[r].matches.forEach(match => {
+                match.t1name = "";
+                match.t2name = "";
+            });
+        }
+
+        // Run auto progression calculation for Round of 16 and subsequent rounds
         for (let r = 0; r < data.rounds.length - 1; r++) {
             const roundMatches = data.rounds[r].matches;
             roundMatches.forEach((match, m) => {
@@ -342,14 +346,6 @@
                 }
             });
         }
-
-        return data;
-    }
-
-    function setupInitialDataLocal() {
-        tournamentData = generateCleanInitialData();
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tournamentData));
-        syncDataToUI();
     }
 
     function syncDataToUI() {
@@ -463,14 +459,14 @@
             btn.className = "w-full py-3 rounded-xl bg-yellow-600 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-yellow-900/20";
             setTimeout(() => {
                 confirmReset = false;
-                btn.innerText = "မူလရမှတ်များအတိုင်း ပြန်လည်စတင်မည် (Reset Bracket)";
+                btn.innerText = "မူလကုဒ်ပါ Fixtures အတိုင်း ပြန်လည်သတ်မှတ်မည် (Reset Bracket)";
                 btn.className = "w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-900/20";
             }, 4000);
             return;
         }
         confirmReset = false;
-        setupInitialDataLocal();
-        showCustomToast("မူလရမှတ်များအတိုင်း အောင်မြင်စွာ Reset ပြုလုပ်ပြီးပါပြီ။");
+        setupStaticTournamentData();
+        showCustomToast("မူလရမှတ်များအတိုင်း အောင်မြင်စွာ ပြန်လည်သတ်မှတ်ပြီးပါပြီ။");
     };
 
     window.changeRound = (dir) => {
@@ -539,14 +535,14 @@
                 <div class="flex gap-4">
                     <div class="flex flex-col gap-1 items-center">
                         <div class="flex gap-1">
-                            <input type="number" class="admin-score-input" value="${match.t1s1}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't1s1', this.value)">
-                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t1s2}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't1s2', this.value)">` : ''}
+                            <input type="number" class="admin-score-input" value="${match.t1s1}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't1s1', this.value)">
+                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t1s2}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't1s2', this.value)">` : ''}
                         </div>
                     </div>
                     <div class="flex flex-col gap-1 items-center">
                         <div class="flex gap-1">
-                            <input type="number" class="admin-score-input" value="${match.t2s1}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't2s1', this.value)">
-                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t2s2}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't2s2', this.value)">` : ''}
+                            <input type="number" class="admin-score-input" value="${match.t2s1}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't2s1', this.value)">
+                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t2s2}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't2s2', this.value)">` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -554,29 +550,17 @@
         });
     }
 
-    window.updateLocalScore = (r, m, field, val) => {
+    window.updateInMemoryScore = (r, m, field, val) => {
         if (!tournamentData.rounds) return;
         
+        // Update in-memory data
         tournamentData.rounds[r].matches[m][field] = parseInt(val) || 0;
         
-        // Auto-progression logic to feed winner into next round match
-        if (r < roundsData.length - 1) {
-            const match = tournamentData.rounds[r].matches[m];
-            const t1total = match.t1s1 + (match.t1s2 || 0);
-            const t2total = match.t2s1 + (match.t2s2 || 0);
-            const winner = t1total > t2total ? match.t1name : (t2total > t1total ? match.t2name : "");
-            
-            if (winner) {
-                const nextRound = r + 1;
-                const nextMatch = Math.floor(m / 2);
-                const teamSlot = (m % 2 === 0) ? 't1name' : 't2name';
-                tournamentData.rounds[nextRound].matches[nextMatch][teamSlot] = winner;
-            }
-        }
+        // Recalculate bracket progression based on in-memory updates
+        recalculateProgression(tournamentData);
 
-        // Save progress to Local Storage
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tournamentData));
-        syncDataToUI(); // Force update UI indicators
+        // Force UI updates directly without localStorage writes
+        syncDataToUI(); 
     };
 
     function applyColoring(r, m) {
