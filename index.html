@@ -147,14 +147,14 @@
 
 <div id="loading" class="loading-overlay">
     <div class="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-    <div class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Database သို့ ချိတ်ဆက်နေပါသည်...</div>
+    <div class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">ပွဲစဉ်ဇယားများကို ပြင်ဆင်နေပါသည်...</div>
 </div>
 
 <header class="pt-8 pb-4 text-center px-4">
     <div class="flex justify-center mb-3">
-        <!-- Database Mode Badge Indicator -->
-        <span id="db-status-badge" class="px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-neutral-900 text-neutral-500 border-neutral-800">
-            Checking Status...
+        <!-- Local Mode Badge Indicator -->
+        <span id="db-status-badge" class="px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-emerald-950/40 text-emerald-400 border-emerald-800/40">
+            🟢 Local Storage Mode
         </span>
     </div>
     <h1 class="text-4xl font-extrabold mb-2 tracking-tighter text-white uppercase italic">PRO LEAGUE</h1>
@@ -188,7 +188,7 @@
         </div>
         <div class="mb-6">
             <button id="reset-btn" onclick="resetTournament()" class="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-900/20">
-                ကစားသမားသစ်များဖြင့် ပြန်လည်စတင်မည် (Reset Bracket)
+                မူလရမှတ်များအတိုင်း ပြန်လည်စတင်မည် (Reset Bracket)
             </button>
         </div>
         <div id="admin-match-list" class="space-y-4"></div>
@@ -213,44 +213,15 @@
     </div>
 </div>
 
-<!-- Firebase SDK with auto Local Storage fallback on permission-denied errors -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // Global variables check
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const rawFirebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-
-    // Firebase Config (Fallback values used if environment config is missing)
-    const firebaseConfig = rawFirebaseConfig ? JSON.parse(rawFirebaseConfig) : {
-        apiKey: "AIzaSyAO0oWLqJ_YoQgEeBkQakEXcw8-VF7wY7I",
-        authDomain: "proleagues2.firebaseapp.com",
-        projectId: "proleagues2",
-        storageBucket: "proleagues2.firebasestorage.app",
-        messagingSenderId: "178428206580",
-        appId: "1:178428206580:web:ff78031a09446951a96da1",
-        measurementId: "G-9Y219BTFW9"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    
-    // Strict path rule setup: Rule 1
-    const tournamentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'tournaments', 'efootball_main');
-
-    // Config & Fallback State
+<script>
+    // Config & Local Storage State
     const ADMIN_PASSWORD = "1234";
     const LOCAL_STORAGE_KEY = "efootball_tournament_local_backup";
     let isAdminAuthenticated = false;
     let currentActiveRound = 0;
     let tournamentData = {};
-    let databaseMode = "cloud"; // "cloud" or "local"
-    let currentUser = null;
 
-    // Fix Tournament Matchups: Exact matchups requested by user (exactly 32 players, 16 pairs)
+    // Fix Tournament Matchups: Exact matchups (exactly 32 players, 16 pairs)
     const initialPlayers = [
         "▄︻デK̷a̷v̷i̷n̷══━一", "York Loa Cc",
         "Thue Won Phyoe", "Myan Khun",
@@ -278,86 +249,42 @@
         { name: "Grand Final", matches: 1, type: "single" }
     ];
 
-    async function initApp() {
+    function initApp() {
         createBracketUI();
-        
-        // RULE 3: Perform Auth FIRST before any Firestore queries are attempted
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (error) {
-            console.error("Auth initialization failed. Falling back to Local Storage mode.", error);
-            switchToLocalStorageMode();
-            return;
-        }
-
-        // Setup real-time listener only AFTER auth is confirmed
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                setupFirestoreListener();
-            } else {
-                switchToLocalStorageMode();
-            }
-        });
-    }
-
-    function setupFirestoreListener() {
-        if (!currentUser) return; // Guard logic
-
-        // Subscribe to real-time updates from Firebase with custom error callback
-        const unsubscribe = onSnapshot(tournamentDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                tournamentData = docSnap.data();
-                syncDataToUI();
-                updateDatabaseModeBadge("cloud");
-            } else {
-                setupInitialData();
-            }
-            hideLoadingScreen();
-        }, (error) => {
-            console.error("Firebase Snapshot listener failed (likely permission-denied or path issue):", error);
-            switchToLocalStorageMode();
-        });
+        loadLocalTournamentData();
+        hideLoadingScreen();
     }
 
     function hideLoadingScreen() {
-        document.getElementById('loading').style.opacity = '0';
-        setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+        const loading = document.getElementById('loading');
+        loading.style.opacity = '0';
+        setTimeout(() => loading.style.display = 'none', 500);
     }
 
-    // Switch to Local Storage fallback
-    function switchToLocalStorageMode() {
-        databaseMode = "local";
-        updateDatabaseModeBadge("local");
-        
-        // Load data from local storage, if exists
+    // Load data from Local Storage or generate with initial scores
+    function loadLocalTournamentData() {
         const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (localData) {
             try {
                 tournamentData = JSON.parse(localData);
                 syncDataToUI();
             } catch (e) {
-                console.error("Error parsing local storage data:", e);
+                console.error("Local Storage error, resetting to initial data", e);
                 setupInitialDataLocal();
             }
         } else {
             setupInitialDataLocal();
         }
-        hideLoadingScreen();
     }
 
-    // Initialize clean data structure with pre-set scores from Match Day
+    // Initialize data structure with pre-set scores
     function generateCleanInitialData() {
         const data = { rounds: [] };
         
-        // Match results data mapping for Round of 32 (Round 1)
+        // Hardcoded tournament match scores for Round of 32 (Round 1)
         const round32Scores = [
             { t1s1: 4, t1s2: 6, t2s1: 1, t2s2: 2 },   // Match 1
-            { t1s1: 5, t1s2: 2, t2s1: 5, t2s2: 5 },   // Match 2 (Updated: Thue Won Phyoe vs Myan Khun)
+            { t1s1: 5, t1s2: 2, t2s1: 5, t2s2: 5 },   // Match 2 (Thue Won Phyoe vs Myan Khun)
             { t1s1: 2, t1s2: 4, t2s1: 1, t2s2: 1 },   // Match 3
             { t1s1: 3, t1s2: 3, t2s1: 0, t2s2: 0 },   // Match 4
             { t1s1: 10, t1s2: 1, t2s1: 3, t2s2: 1 },  // Match 5
@@ -399,7 +326,7 @@
             data.rounds.push({ matches });
         });
 
-        // Run auto progression calculation so Round of 16 loads automatically with Winners
+        // Run auto progression calculation for Round of 16 and subsequent rounds
         for (let r = 0; r < data.rounds.length - 1; r++) {
             const roundMatches = data.rounds[r].matches;
             roundMatches.forEach((match, m) => {
@@ -419,22 +346,6 @@
         return data;
     }
 
-    // First time setup on Cloud
-    async function setupInitialData() {
-        tournamentData = generateCleanInitialData();
-        if (databaseMode === "cloud" && currentUser) {
-            try {
-                await setDoc(tournamentDocRef, tournamentData);
-            } catch (error) {
-                console.error("Failed to setup initial data on cloud, falling back to local storage.", error);
-                switchToLocalStorageMode();
-            }
-        } else {
-            setupInitialDataLocal();
-        }
-    }
-
-    // Local Storage version of initial data setup
     function setupInitialDataLocal() {
         tournamentData = generateCleanInitialData();
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tournamentData));
@@ -448,7 +359,7 @@
             round.matches.forEach((match, mIdx) => {
                 const isFinal = roundsData[rIdx].type === "single";
                 
-                // Update Bracket View
+                // Update Bracket UI
                 updateElement(`r${rIdx}m${mIdx}t1name`, match.t1name, 'val');
                 updateElement(`r${rIdx}m${mIdx}t2name`, match.t2name, 'val');
                 updateElement(`r${rIdx}m${mIdx}t1s1-disp`, match.t1s1);
@@ -459,12 +370,12 @@
                     updateElement(`r${rIdx}m${mIdx}t2s2-disp`, match.t2s2);
                 }
 
-                // Apply Colors
+                // Colorize scores
                 applyColoring(rIdx, mIdx);
             });
         });
         
-        // If admin view is open, refresh the list
+        // Refresh admin edit list if visible
         if (!document.getElementById('admin-view').classList.contains('hidden-view')) {
             generateAdminList();
         }
@@ -477,18 +388,6 @@
         else el.innerText = val;
     }
 
-    function updateDatabaseModeBadge(mode) {
-        const badge = document.getElementById('db-status-badge');
-        if (mode === 'cloud') {
-            badge.className = "px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-emerald-950/40 text-emerald-400 border-emerald-800/40";
-            badge.innerText = "🟢 Cloud Synced";
-        } else {
-            badge.className = "px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-yellow-950/40 text-yellow-400 border-yellow-800/40";
-            badge.innerText = "🟡 Local Storage Mode";
-        }
-    }
-
-    // Custom Toast alert to replace restricted standard alert
     function showCustomToast(msg, type = "success") {
         const toast = document.getElementById('custom-toast');
         const indicator = document.getElementById('toast-indicator');
@@ -556,7 +455,7 @@
     };
 
     let confirmReset = false;
-    window.resetTournament = async () => {
+    window.resetTournament = () => {
         const btn = document.getElementById('reset-btn');
         if (!confirmReset) {
             confirmReset = true;
@@ -564,29 +463,14 @@
             btn.className = "w-full py-3 rounded-xl bg-yellow-600 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-yellow-900/20";
             setTimeout(() => {
                 confirmReset = false;
-                btn.innerText = "ကစားသမားသစ်များဖြင့် ပြန်လည်စတင်မည် (Reset Bracket)";
+                btn.innerText = "မူလရမှတ်များအတိုင်း ပြန်လည်စတင်မည် (Reset Bracket)";
                 btn.className = "w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-900/20";
             }, 4000);
             return;
         }
         confirmReset = false;
-        btn.innerText = "သိမ်းဆည်းနေပါသည်...";
-
-        if (databaseMode === "cloud" && currentUser) {
-            try {
-                await setupInitialData();
-                showCustomToast("Cloud Bracket အောင်မြင်စွာ Reset ဖြစ်သွားပါပြီ။");
-            } catch (err) {
-                console.error("Cloud Reset Failed, resetting local instead.", err);
-                setupInitialDataLocal();
-                showCustomToast("Local Storage Bracket အား Reset လုပ်ပြီးပါပြီ။", "error");
-            }
-        } else {
-            setupInitialDataLocal();
-            showCustomToast("Local Storage Bracket အား Reset လုပ်ပြီးပါပြီ။");
-        }
-        btn.innerText = "ကစားသမားသစ်များဖြင့် ပြန်လည်စတင်မည် (Reset Bracket)";
-        btn.className = "w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-900/20";
+        setupInitialDataLocal();
+        showCustomToast("မူလရမှတ်များအတိုင်း အောင်မြင်စွာ Reset ပြုလုပ်ပြီးပါပြီ။");
     };
 
     window.changeRound = (dir) => {
@@ -655,14 +539,14 @@
                 <div class="flex gap-4">
                     <div class="flex flex-col gap-1 items-center">
                         <div class="flex gap-1">
-                            <input type="number" class="admin-score-input" value="${match.t1s1}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't1s1', this.value)">
-                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t1s2}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't1s2', this.value)">` : ''}
+                            <input type="number" class="admin-score-input" value="${match.t1s1}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't1s1', this.value)">
+                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t1s2}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't1s2', this.value)">` : ''}
                         </div>
                     </div>
                     <div class="flex flex-col gap-1 items-center">
                         <div class="flex gap-1">
-                            <input type="number" class="admin-score-input" value="${match.t2s1}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't2s1', this.value)">
-                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t2s2}" onchange="updateFirebaseScore(${rIdx}, ${mIdx}, 't2s2', this.value)">` : ''}
+                            <input type="number" class="admin-score-input" value="${match.t2s1}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't2s1', this.value)">
+                            ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t2s2}" onchange="updateLocalScore(${rIdx}, ${mIdx}, 't2s2', this.value)">` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -670,7 +554,7 @@
         });
     }
 
-    window.updateFirebaseScore = async (r, m, field, val) => {
+    window.updateLocalScore = (r, m, field, val) => {
         if (!tournamentData.rounds) return;
         
         tournamentData.rounds[r].matches[m][field] = parseInt(val) || 0;
@@ -690,21 +574,9 @@
             }
         }
 
-        // Save progress (Hybrid Cloud / Local)
-        if (databaseMode === "cloud" && currentUser) {
-            try {
-                await setDoc(tournamentDocRef, tournamentData);
-                // Mirror to local storage as fallback
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tournamentData));
-            } catch (err) {
-                console.error("Fail writing to Firestore. Switching to Local mode.", err);
-                switchToLocalStorageMode();
-                showCustomToast("Cloud Sync ပြတ်တောက်သွားသဖြင့် Local သို့သိမ်းဆည်းလိုက်ပါသည်။", "error");
-            }
-        } else {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tournamentData));
-            syncDataToUI(); // Force update UI indicators
-        }
+        // Save progress to Local Storage
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tournamentData));
+        syncDataToUI(); // Force update UI indicators
     };
 
     function applyColoring(r, m) {
