@@ -315,20 +315,72 @@
         hideLoadingScreen();
     }
 
-    // Initialize clean data structure
+    // Initialize clean data structure with pre-set scores from Match Day
     function generateCleanInitialData() {
         const data = { rounds: [] };
+        
+        // Match results data mapping for Round of 32 (Round 1)
+        const round32Scores = [
+            { t1s1: 4, t1s2: 6, t2s1: 1, t2s2: 2 },   // Match 1
+            { t1s1: 5, t1s2: 2, t2s1: 5, t2s2: 5 },   // Match 2 (Updated: Thue Won Phyoe vs Myan Khun)
+            { t1s1: 2, t1s2: 4, t2s1: 1, t2s2: 1 },   // Match 3
+            { t1s1: 3, t1s2: 3, t2s1: 0, t2s2: 0 },   // Match 4
+            { t1s1: 10, t1s2: 1, t2s1: 3, t2s2: 1 },  // Match 5
+            { t1s1: 0, t1s2: 0, t2s1: 4, t2s2: 2 },   // Match 6
+            { t1s1: 2, t1s2: 1, t2s1: 4, t2s2: 5 },   // Match 7
+            { t1s1: 4, t1s2: 5, t2s1: 2, t2s2: 3 },   // Match 8
+            { t1s1: 3, t1s2: 5, t2s1: 3, t2s2: 4 },   // Match 9
+            { t1s1: 6, t1s2: 3, t2s1: 5, t2s2: 8 },   // Match 10
+            { t1s1: 0, t1s2: 2, t2s1: 3, t2s2: 2 },   // Match 11
+            { t1s1: 3, t1s2: 3, t2s1: 1, t2s2: 0 },   // Match 12
+            { t1s1: 3, t1s2: 5, t2s1: 4, t2s2: 5 },   // Match 13
+            { t1s1: 6, t1s2: 2, t2s1: 1, t2s2: 0 },   // Match 14
+            { t1s1: 1, t1s2: 6, t2s1: 5, t2s2: 3 },   // Match 15
+            { t1s1: 0, t1s2: 0, t2s1: 0, t2s2: 0 }    // Match 16
+        ];
+
         roundsData.forEach((round, rIdx) => {
             const matches = [];
             for (let i = 0; i < round.matches; i++) {
-                matches.push({
-                    t1name: rIdx === 0 ? (initialPlayers[i * 2] || "") : "",
-                    t2name: rIdx === 0 ? (initialPlayers[i * 2 + 1] || "") : "",
+                let matchObj = {
+                    t1name: "",
+                    t2name: "",
                     t1s1: 0, t1s2: 0, t2s1: 0, t2s2: 0
-                });
+                };
+                
+                if (rIdx === 0) {
+                    matchObj.t1name = initialPlayers[i * 2] || "";
+                    matchObj.t2name = initialPlayers[i * 2 + 1] || "";
+                    const scores = round32Scores[i];
+                    if (scores) {
+                        matchObj.t1s1 = scores.t1s1;
+                        matchObj.t1s2 = scores.t1s2;
+                        matchObj.t2s1 = scores.t2s1;
+                        matchObj.t2s2 = scores.t2s2;
+                    }
+                }
+                matches.push(matchObj);
             }
             data.rounds.push({ matches });
         });
+
+        // Run auto progression calculation so Round of 16 loads automatically with Winners
+        for (let r = 0; r < data.rounds.length - 1; r++) {
+            const roundMatches = data.rounds[r].matches;
+            roundMatches.forEach((match, m) => {
+                const t1total = match.t1s1 + (match.t1s2 || 0);
+                const t2total = match.t2s1 + (match.t2s2 || 0);
+                const winner = t1total > t2total ? match.t1name : (t2total > t1total ? match.t2name : "");
+                
+                if (winner) {
+                    const nextRound = r + 1;
+                    const nextMatch = Math.floor(m / 2);
+                    const teamSlot = (m % 2 === 0) ? 't1name' : 't2name';
+                    data.rounds[nextRound].matches[nextMatch][teamSlot] = winner;
+                }
+            });
+        }
+
         return data;
     }
 
