@@ -216,10 +216,15 @@
 <!-- Firebase SDK with auto Local Storage fallback on permission-denied errors -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Firebase Config
-    const firebaseConfig = {
+    // Global variables check
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const rawFirebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+
+    // Firebase Config (Fallback values used if environment config is missing)
+    const firebaseConfig = rawFirebaseConfig ? JSON.parse(rawFirebaseConfig) : {
         apiKey: "AIzaSyAO0oWLqJ_YoQgEeBkQakEXcw8-VF7wY7I",
         authDomain: "proleagues2.firebaseapp.com",
         projectId: "proleagues2",
@@ -230,8 +235,11 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
-    const tournamentDocRef = doc(db, "tournaments", "efootball_main");
+    
+    // Strict path rule setup: Rule 1
+    const tournamentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'tournaments', 'efootball_main');
 
     // Config & Fallback State
     const ADMIN_PASSWORD = "1234";
@@ -240,6 +248,7 @@
     let currentActiveRound = 0;
     let tournamentData = {};
     let databaseMode = "cloud"; // "cloud" or "local"
+    let currentUser = null;
 
     // Fix Tournament Matchups: Exact matchups requested by user (exactly 32 players, 16 pairs)
     const initialPlayers = [
@@ -269,11 +278,38 @@
         { name: "Grand Final", matches: 1, type: "single" }
     ];
 
-    function initApp() {
+    async function initApp() {
         createBracketUI();
         
+        // RULE 3: Perform Auth FIRST before any Firestore queries are attempted
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (error) {
+            console.error("Auth initialization failed. Falling back to Local Storage mode.", error);
+            switchToLocalStorageMode();
+            return;
+        }
+
+        // Setup real-time listener only AFTER auth is confirmed
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                setupFirestoreListener();
+            } else {
+                switchToLocalStorageMode();
+            }
+        });
+    }
+
+    function setupFirestoreListener() {
+        if (!currentUser) return; // Guard logic
+
         // Subscribe to real-time updates from Firebase with custom error callback
-        onSnapshot(tournamentDocRef, (docSnap) => {
+        const unsubscribe = onSnapshot(tournamentDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 tournamentData = docSnap.data();
                 syncDataToUI();
@@ -283,8 +319,7 @@
             }
             hideLoadingScreen();
         }, (error) => {
-            console.error("Firebase Snapshot listener failed (likely permission-denied):", error);
-            // Fallback to local storage mode
+            console.error("Firebase Snapshot listener failed (likely permission-denied or path issue):", error);
             switchToLocalStorageMode();
         });
     }
@@ -387,11 +422,15 @@
     // First time setup on Cloud
     async function setupInitialData() {
         tournamentData = generateCleanInitialData();
-        try {
-            await setDoc(tournamentDocRef, tournamentData);
-        } catch (error) {
-            console.error("Failed to setup initial data on cloud, falling back to local storage.", error);
-            switchToLocalStorageMode();
+        if (databaseMode === "cloud" && currentUser) {
+            try {
+                await setDoc(tournamentDocRef, tournamentData);
+            } catch (error) {
+                console.error("Failed to setup initial data on cloud, falling back to local storage.", error);
+                switchToLocalStorageMode();
+            }
+        } else {
+            setupInitialDataLocal();
         }
     }
 
@@ -533,7 +572,7 @@
         confirmReset = false;
         btn.innerText = "သိမ်းဆည်းနေပါသည်...";
 
-        if (databaseMode === "cloud") {
+        if (databaseMode === "cloud" && currentUser) {
             try {
                 await setupInitialData();
                 showCustomToast("Cloud Bracket အောင်မြင်စွာ Reset ဖြစ်သွားပါပြီ။");
@@ -652,7 +691,7 @@
         }
 
         // Save progress (Hybrid Cloud / Local)
-        if (databaseMode === "cloud") {
+        if (databaseMode === "cloud" && currentUser) {
             try {
                 await setDoc(tournamentDocRef, tournamentData);
                 // Mirror to local storage as fallback
