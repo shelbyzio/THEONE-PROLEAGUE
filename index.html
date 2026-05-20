@@ -6,7 +6,7 @@
     <title>THE ONE PRO LEAGUE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
         
         :root {
             --primary-red: #ef4444;
@@ -30,7 +30,7 @@
 
         .round-container {
             display: none; 
-            animation: fadeIn 0.5s ease-out;
+            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .round-container.active {
@@ -38,7 +38,7 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -60,9 +60,14 @@
             border: 1px solid var(--border-color);
             border-radius: 1.25rem;
             padding: 1.5rem;
-            margin: 1rem 0;
-            transition: all 0.3s ease;
+            margin: 1.25rem 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
+        }
+
+        .matchup:hover {
+            border-color: rgba(239, 68, 68, 0.3);
+            box-shadow: 0 10px 30px -10px rgba(239, 68, 68, 0.15);
         }
 
         .match-badge {
@@ -76,25 +81,38 @@
             padding: 2px 10px;
             border-radius: 4px;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
         }
 
         .score-box {
-            min-width: 32px;
-            height: 32px;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 6px;
+            min-width: 34px;
+            height: 34px;
+            background: #161616;
+            border: 1px solid #2d2d2d;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #888;
+            transition: all 0.2s;
         }
 
-        .score-win { color: var(--primary-green) !important; border-color: rgba(34, 197, 94, 0.3) !important; }
-        .score-lose { color: var(--primary-red) !important; border-color: rgba(239, 68, 68, 0.3) !important; }
-        .score-draw { color: var(--primary-yellow) !important; border-color: rgba(234, 179, 8, 0.3) !important; }
+        .aggregate-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            background: rgba(255, 255, 255, 0.05);
+            color: #aaa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .score-win { color: var(--primary-green) !important; border-color: rgba(34, 197, 94, 0.4) !important; background: rgba(34, 197, 94, 0.05); }
+        .score-lose { color: var(--primary-red) !important; border-color: rgba(239, 68, 68, 0.4) !important; background: rgba(239, 68, 68, 0.05); }
+        .score-draw { color: var(--primary-yellow) !important; border-color: rgba(234, 179, 8, 0.4) !important; background: rgba(234, 179, 8, 0.05); }
 
         .nav-btn {
             padding: 0.75rem 2rem;
@@ -115,7 +133,7 @@
         .hidden-view { display: none !important; }
         
         .admin-score-input {
-            width: 50px;
+            width: 55px;
             height: 40px;
             background: #000;
             border: 1px solid #444;
@@ -123,11 +141,16 @@
             text-align: center;
             border-radius: 8px;
             font-weight: 800;
+            font-size: 1rem;
+        }
+        .admin-score-input:focus {
+            border-color: var(--primary-red);
+            outline: none;
         }
 
         #auth-modal {
-            background: rgba(0,0,0,0.9);
-            backdrop-filter: blur(10px);
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(12px);
         }
 
         .loading-overlay {
@@ -147,12 +170,11 @@
 
 <div id="loading" class="loading-overlay">
     <div class="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-    <div class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">ပွဲစဉ်ဇယားများကို ပြင်ဆင်နေပါသည်...</div>
+    <div class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-4 text-center">ပွဲစဉ်ဇယားများကို ပြင်ဆင်နေပါသည်...</div>
 </div>
 
 <header class="pt-8 pb-4 text-center px-4">
     <div class="flex justify-center mb-3">
-        <!-- Static Mode Badge Indicator -->
         <span id="db-status-badge" class="px-3 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-red-950/40 text-red-400 border-red-800/40">
             🔴 Code-Defined Fixtures Mode
         </span>
@@ -195,6 +217,7 @@
     </div>
 </div>
 
+<!-- Password Access Modal -->
 <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4">
     <div class="bg-neutral-900 border border-neutral-800 p-8 rounded-3xl w-full max-w-sm shadow-2xl">
         <div class="text-center mb-6">
@@ -214,13 +237,11 @@
 </div>
 
 <script>
-    // Config & Memory State
     const ADMIN_PASSWORD = "1234";
     let isAdminAuthenticated = false;
     let currentActiveRound = 0;
     let tournamentData = {};
 
-    // Fix Tournament Matchups: Exact matchups (exactly 32 players, 16 pairs)
     const initialPlayers = [
         "▄︻デK̷a̷v̷i̷n̷══━一", "York Loa Cc",
         "Thue Won Phyoe", "Myan Khun",
@@ -260,35 +281,45 @@
         setTimeout(() => loading.style.display = 'none', 500);
     }
 
-    // Direct initialization of code-defined data structure
     function setupStaticTournamentData() {
         tournamentData = generateCleanInitialData();
         syncDataToUI();
     }
 
-    // Initialize data structure with pre-set scores
+    // Populate the latest matches scores as requested
     function generateCleanInitialData() {
         const data = { rounds: [] };
         
-        // Hardcoded tournament match scores for Round of 32 (Round 1)
+        // Round of 32 Results (Home and Away legs)
         const round32Scores = [
-            { t1s1: 4, t1s2: 6, t2s1: 1, t2s2: 2 },   // Match 1
-            { t1s1: 5, t1s2: 2, t2s1: 5, t2s2: 5 },   // Match 2 (Thue Won Phyoe vs Myan Khun)
-            { t1s1: 2, t1s2: 4, t2s1: 1, t2s2: 1 },   // Match 3
-            { t1s1: 3, t1s2: 3, t2s1: 0, t2s2: 0 },   // Match 4
-            { t1s1: 10, t1s2: 1, t2s1: 3, t2s2: 1 },  // Match 5
-            { t1s1: 0, t1s2: 0, t2s1: 4, t2s2: 2 },   // Match 6
-            { t1s1: 2, t1s2: 1, t2s1: 4, t2s2: 5 },   // Match 7
-            { t1s1: 4, t1s2: 5, t2s1: 2, t2s2: 3 },   // Match 8
-            { t1s1: 3, t1s2: 5, t2s1: 3, t2s2: 4 },   // Match 9
-            { t1s1: 6, t1s2: 3, t2s1: 5, t2s2: 8 },   // Match 10
-            { t1s1: 0, t1s2: 2, t2s1: 3, t2s2: 2 },   // Match 11
-            { t1s1: 3, t1s2: 3, t2s1: 1, t2s2: 0 },   // Match 12
-            { t1s1: 3, t1s2: 5, t2s1: 4, t2s2: 5 },   // Match 13
-            { t1s1: 6, t1s2: 2, t2s1: 1, t2s2: 0 },   // Match 14
-            { t1s1: 1, t1s2: 6, t2s1: 5, t2s2: 3 },   // Match 15
-            { t1s1: 0, t1s2: 0, t2s1: 3, t2s2: 3 }    // Match 16 (Updated: Zaw Phyo Thu vs Van Cro)
+            { t1s1: 4, t1s2: 6, t2s1: 1, t2s2: 2 },   // Match 1: Kavin vs York Loa Cc
+            { t1s1: 5, t1s2: 2, t2s1: 5, t2s2: 5 },   // Match 2: Thue Won Phyoe vs Myan Khun
+            { t1s1: 2, t1s2: 4, t2s1: 1, t2s2: 1 },   // Match 3: Sexin Khant Kyaw vs Pyae Sone Hein
+            { t1s1: 3, t1s2: 3, t2s1: 0, t2s2: 0 },   // Match 4: Dean vs Ya Tha Nyo
+            { t1s1: 10, t1s2: 1, t2s1: 3, t2s2: 1 },  // Match 5: Thein Htike vs Vinn
+            { t1s1: 0, t1s2: 0, t2s1: 4, t2s2: 2 },   // Match 6: Rice Chat vs P,S,T,W
+            { t1s1: 2, t1s2: 1, t2s1: 4, t2s2: 5 },   // Match 7: Kyaw Gyi vs Zwe
+            { t1s1: 4, t1s2: 5, t2s1: 2, t2s2: 3 },   // Match 8: Min Khant vs PSTW 2
+            { t1s1: 3, t1s2: 5, t2s1: 3, t2s2: 4 },   // Match 9: JP vs Yi Wai
+            { t1s1: 6, t1s2: 3, t2s1: 5, t2s2: 8 },   // Match 10: Aung Hein Oo vs Ko Jake
+            { t1s1: 0, t1s2: 2, t2s1: 3, t2s2: 2 },   // Match 11: M vs Aung Thiha
+            { t1s1: 3, t1s2: 3, t2s1: 1, t2s2: 0 },   // Match 12: J Ngar vs Octopus
+            { t1s1: 3, t1s2: 5, t2s1: 4, t2s2: 5 },   // Match 13: ဖိုးချမ်း vs Zayar Hein
+            { t1s1: 6, t1s2: 2, t2s1: 1, t2s2: 0 },   // Match 14: H vs THAWN PI
+            { t1s1: 1, t1s2: 6, t2s1: 5, t2s2: 3 },   // Match 15: Nyan Lin Aung vs ッ 光明
+            { t1s1: 0, t1s2: 0, t2s1: 3, t2s2: 3 }    // Match 16: Zaw Phyo Thu vs Van Cro
         ];
+
+        // NEW: Round of 16 Results (Incorporating user request data)
+        const round16Scores = {
+            0: { t1s1: 6, t1s2: 3, t2s1: 6, t2s2: 1 }, // Kavin vs Myan Khun
+            1: { t1s1: 0, t1s2: 1, t2s1: 4, t2s2: 6 }, // Sxine Khant Kyaw vs Dean
+            2: { t1s1: 3, t1s2: 1, t2s1: 3, t2s2: 2 }, // Thein Htike vs P,S,T,W
+            3: { t1s1: 2, t1s2: 6, t2s1: 5, t2s2: 2 }, // Zwe vs Min Khant
+            4: { t1s1: 1, t1s2: 6, t2s1: 1, t2s2: 5 }, // JP vs Ko Jake
+            5: { t1s1: 5, t1s2: 0, t2s1: 5, t2s2: 3 }, // Aung Thiha vs J Ngar
+            6: { t1s1: 0, t1s2: 1, t2s1: 5, t2s2: 4 }  // Zayar Hein vs H
+        };
 
         roundsData.forEach((round, rIdx) => {
             const matches = [];
@@ -315,14 +346,28 @@
             data.rounds.push({ matches });
         });
 
-        // Run auto progression calculation for Round of 16 and subsequent rounds
+        // Run dynamic propagation
+        recalculateProgression(data);
+
+        // Populate Round of 16 preset scores
+        Object.keys(round16Scores).forEach(mIdx => {
+            if (data.rounds[1] && data.rounds[1].matches[mIdx]) {
+                const match = data.rounds[1].matches[mIdx];
+                match.t1s1 = round16Scores[mIdx].t1s1;
+                match.t1s2 = round16Scores[mIdx].t1s2;
+                match.t2s1 = round16Scores[mIdx].t2s1;
+                match.t2s2 = round16Scores[mIdx].t2s2;
+            }
+        });
+
+        // Run dynamic propagation again to propagate Round of 16 winners to Quarter Finals
         recalculateProgression(data);
 
         return data;
     }
 
     function recalculateProgression(data) {
-        // Clear subsequent rounds progression first to avoid duplicate propagation
+        // Clear subsequent team slots to avoid duplicate/dead names
         for (let r = 1; r < data.rounds.length; r++) {
             data.rounds[r].matches.forEach(match => {
                 match.t1name = "";
@@ -330,19 +375,24 @@
             });
         }
 
-        // Run auto progression calculation for Round of 16 and subsequent rounds
+        // Auto progression logic
         for (let r = 0; r < data.rounds.length - 1; r++) {
             const roundMatches = data.rounds[r].matches;
             roundMatches.forEach((match, m) => {
                 const t1total = match.t1s1 + (match.t1s2 || 0);
                 const t2total = match.t2s1 + (match.t2s2 || 0);
-                const winner = t1total > t2total ? match.t1name : (t2total > t1total ? match.t2name : "");
                 
-                if (winner) {
+                // Only evaluate progression if at least one side has score points or won
+                const hasScore = (match.t1s1 > 0 || match.t1s2 > 0 || match.t2s1 > 0 || match.t2s2 > 0);
+                const winner = (t1total > t2total) ? match.t1name : ((t2total > t1total) ? match.t2name : "");
+                
+                if (winner && hasScore) {
                     const nextRound = r + 1;
                     const nextMatch = Math.floor(m / 2);
                     const teamSlot = (m % 2 === 0) ? 't1name' : 't2name';
-                    data.rounds[nextRound].matches[nextMatch][teamSlot] = winner;
+                    if (data.rounds[nextRound] && data.rounds[nextRound].matches[nextMatch]) {
+                        data.rounds[nextRound].matches[nextMatch][teamSlot] = winner;
+                    }
                 }
             });
         }
@@ -355,23 +405,28 @@
             round.matches.forEach((match, mIdx) => {
                 const isFinal = roundsData[rIdx].type === "single";
                 
-                // Update Bracket UI
-                updateElement(`r${rIdx}m${mIdx}t1name`, match.t1name, 'val');
-                updateElement(`r${rIdx}m${mIdx}t2name`, match.t2name, 'val');
+                // Update text values
+                updateElement(`r${rIdx}m${mIdx}t1name`, match.t1name || "TBD", 'val');
+                updateElement(`r${rIdx}m${mIdx}t2name`, match.t2name || "TBD", 'val');
                 updateElement(`r${rIdx}m${mIdx}t1s1-disp`, match.t1s1);
                 updateElement(`r${rIdx}m${mIdx}t2s1-disp`, match.t2s1);
                 
                 if (!isFinal) {
                     updateElement(`r${rIdx}m${mIdx}t1s2-disp`, match.t1s2);
                     updateElement(`r${rIdx}m${mIdx}t2s2-disp`, match.t2s2);
+                    
+                    // Show Aggregate
+                    const agg1 = match.t1s1 + match.t1s2;
+                    const agg2 = match.t2s1 + match.t2s2;
+                    updateElement(`r${rIdx}m${mIdx}agg-disp`, `AGG: ${agg1} - ${agg2}`);
                 }
 
-                // Colorize scores
+                // Apply victory coloring
                 applyColoring(rIdx, mIdx);
             });
         });
         
-        // Refresh admin edit list if visible
+        // Refresh admin layout
         if (!document.getElementById('admin-view').classList.contains('hidden-view')) {
             generateAdminList();
         }
@@ -380,8 +435,17 @@
     function updateElement(id, val, type = 'text') {
         const el = document.getElementById(id);
         if (!el) return;
-        if (type === 'val') el.value = val;
-        else el.innerText = val;
+        if (type === 'val') {
+            el.value = val;
+            // Style TBD fields visually
+            if (val === "TBD" || val === "") {
+                el.classList.add('text-neutral-600', 'italic');
+            } else {
+                el.classList.remove('text-neutral-600', 'italic');
+            }
+        } else {
+            el.innerText = val;
+        }
     }
 
     function showCustomToast(msg, type = "success") {
@@ -495,19 +559,23 @@
                         <div class="match-badge">Match ${i+1}</div>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center">
-                                <input type="text" readonly class="bg-transparent border-b border-neutral-800 font-bold text-sm outline-none w-1/2" id="r${rIdx}m${i}t1name">
-                                <div class="flex gap-1">
+                                <input type="text" readonly class="bg-transparent font-extrabold text-sm outline-none w-1/2 tracking-tight text-neutral-100" id="r${rIdx}m${i}t1name" value="TBD">
+                                <div class="flex gap-1 items-center">
                                     <div class="score-box" id="r${rIdx}m${i}t1s1-disp">0</div>
                                     ${!isFinal ? `<div class="score-box" id="r${rIdx}m${i}t1s2-disp">0</div>` : ''}
                                 </div>
                             </div>
                             <div class="flex justify-between items-center">
-                                <input type="text" readonly class="bg-transparent border-b border-neutral-800 font-bold text-sm outline-none w-1/2" id="r${rIdx}m${i}t2name">
-                                <div class="flex gap-1">
+                                <input type="text" readonly class="bg-transparent font-extrabold text-sm outline-none w-1/2 tracking-tight text-neutral-100" id="r${rIdx}m${i}t2name" value="TBD">
+                                <div class="flex gap-1 items-center">
                                     <div class="score-box" id="r${rIdx}m${i}t2s1-disp">0</div>
                                     ${!isFinal ? `<div class="score-box" id="r${rIdx}m${i}t2s2-disp">0</div>` : ''}
                                 </div>
                             </div>
+                            ${!isFinal ? `
+                            <div class="flex justify-end pt-1">
+                                <div class="aggregate-badge" id="r${rIdx}m${i}agg-disp">AGG: 0 - 0</div>
+                            </div>` : ''}
                         </div>
                     </div>`;
             }
@@ -529,17 +597,28 @@
         round.matches.forEach((match, mIdx) => {
             const isFinal = roundsData[rIdx].type === "single";
             const div = document.createElement('div');
-            div.className = "p-4 bg-black/20 border border-neutral-800 rounded-xl flex items-center justify-between";
+            div.className = "p-4 bg-neutral-950/60 border border-neutral-900 rounded-xl flex items-center justify-between gap-4";
+            
+            const team1Display = match.t1name || 'T1 (TBD)';
+            const team2Display = match.t2name || 'T2 (TBD)';
+            
             div.innerHTML = `
-                <div class="text-xs font-bold w-1/3">${match.t1name || 'T1'} vs ${match.t2name || 'T2'}</div>
-                <div class="flex gap-4">
+                <div class="text-xs font-bold w-2/5 truncate">
+                    <span class="text-red-400 font-black mr-1">#${mIdx+1}</span> 
+                    <div class="text-white">${team1Display}</div>
+                    <div class="text-neutral-500 text-[10px] my-0.5">VS</div>
+                    <div class="text-white">${team2Display}</div>
+                </div>
+                <div class="flex gap-4 items-center">
                     <div class="flex flex-col gap-1 items-center">
+                        <div class="text-[9px] uppercase font-bold text-neutral-500">T1 Scores</div>
                         <div class="flex gap-1">
                             <input type="number" class="admin-score-input" value="${match.t1s1}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't1s1', this.value)">
                             ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t1s2}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't1s2', this.value)">` : ''}
                         </div>
                     </div>
                     <div class="flex flex-col gap-1 items-center">
+                        <div class="text-[9px] uppercase font-bold text-neutral-500">T2 Scores</div>
                         <div class="flex gap-1">
                             <input type="number" class="admin-score-input" value="${match.t2s1}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't2s1', this.value)">
                             ${!isFinal ? `<input type="number" class="admin-score-input" value="${match.t2s2}" onchange="updateInMemoryScore(${rIdx}, ${mIdx}, 't2s2', this.value)">` : ''}
@@ -553,34 +632,66 @@
     window.updateInMemoryScore = (r, m, field, val) => {
         if (!tournamentData.rounds) return;
         
-        // Update in-memory data
+        // Save in memory
         tournamentData.rounds[r].matches[m][field] = parseInt(val) || 0;
         
-        // Recalculate bracket progression based on in-memory updates
+        // Recalculate whole bracket progression
         recalculateProgression(tournamentData);
 
-        // Force UI updates directly without localStorage writes
+        // Force UI update
         syncDataToUI(); 
     };
 
     function applyColoring(r, m) {
         const isFinal = roundsData[r].type === "single";
-        const compare = (s1, s2, el1, el2) => {
-            el1?.classList.remove('score-win', 'score-lose', 'score-draw');
-            el2?.classList.remove('score-win', 'score-lose', 'score-draw');
-            if (s1 > s2) { el1.classList.add('score-win'); el2.classList.add('score-lose'); }
-            else if (s2 > s1) { el2.classList.add('score-win'); el1.classList.add('score-lose'); }
-            else { el1.classList.add('score-draw'); el2.classList.add('score-draw'); }
-        };
+        
+        const t1s1El = document.getElementById(`r${r}m${m}t1s1-disp`);
+        const t2s1El = document.getElementById(`r${r}m${m}t2s1-disp`);
+        const t1s2El = document.getElementById(`r${r}m${m}t1s2-disp`);
+        const t2s2El = document.getElementById(`r${r}m${m}t2s2-disp`);
+        
+        // Reset classes
+        t1s1El?.classList.remove('score-win', 'score-lose', 'score-draw');
+        t2s1El?.classList.remove('score-win', 'score-lose', 'score-draw');
+        t1s2El?.classList.remove('score-win', 'score-lose', 'score-draw');
+        t2s2El?.classList.remove('score-win', 'score-lose', 'score-draw');
 
-        const t1s1 = parseInt(document.getElementById(`r${r}m${m}t1s1-disp`)?.innerText || 0);
-        const t2s1 = parseInt(document.getElementById(`r${r}m${m}t2s1-disp`)?.innerText || 0);
-        compare(t1s1, t2s1, document.getElementById(`r${r}m${m}t1s1-disp`), document.getElementById(`r${r}m${m}t2s1-disp`));
+        const t1s1 = parseInt(t1s1El?.innerText || 0);
+        const t2s1 = parseInt(t2s1El?.innerText || 0);
+        const t1s2 = isFinal ? 0 : parseInt(t1s2El?.innerText || 0);
+        const t2s2 = isFinal ? 0 : parseInt(t2s2El?.innerText || 0);
 
-        if(!isFinal) {
-            const t1s2 = parseInt(document.getElementById(`r${r}m${m}t1s2-disp`)?.innerText || 0);
-            const t2s2 = parseInt(document.getElementById(`r${r}m${m}t2s2-disp`)?.innerText || 0);
-            compare(t1s2, t2s2, document.getElementById(`r${r}m${m}t1s2-disp`), document.getElementById(`r${r}m${m}t2s2-disp`));
+        const t1Total = t1s1 + t1s2;
+        const t2Total = t2s1 + t2s2;
+
+        const hasActivity = (t1s1 > 0 || t2s1 > 0 || t1s2 > 0 || t2s2 > 0);
+
+        if (hasActivity) {
+            // Leg 1 Coloring
+            if (t1s1 > t2s1) {
+                t1s1El?.classList.add('score-win');
+                t2s1El?.classList.add('score-lose');
+            } else if (t2s1 > t1s1) {
+                t2s1El?.classList.add('score-win');
+                t1s1El?.classList.add('score-lose');
+            } else {
+                t1s1El?.classList.add('score-draw');
+                t2s1El?.classList.add('score-draw');
+            }
+
+            // Leg 2 Coloring
+            if (!isFinal) {
+                if (t1s2 > t2s2) {
+                    t1s2El?.classList.add('score-win');
+                    t2s2El?.classList.add('score-lose');
+                } else if (t2s2 > t1s2) {
+                    t2s2El?.classList.add('score-win');
+                    t1s2El?.classList.add('score-lose');
+                } else {
+                    t1s2El?.classList.add('score-draw');
+                    t2s2El?.classList.add('score-draw');
+                }
+            }
         }
     }
 
@@ -591,7 +702,9 @@
     }
 
     // Start App
-    initApp();
+    window.onload = function() {
+        initApp();
+    };
 </script>
 </body>
 </html>
