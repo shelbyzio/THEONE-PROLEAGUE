@@ -6,7 +6,7 @@
     <title>THE ONE PRO LEAGUE - TOURNAMENT BRACKET</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=400;500;600;700;800;900&display=swap');
         
         :root {
             --primary-red: #ef4444;
@@ -184,7 +184,7 @@
     <div class="flex justify-center mb-4">
         <span id="db-status-badge" class="px-4 py-1.5 rounded-full text-[9px] font-bold tracking-wider uppercase border bg-red-950/20 text-red-400 border-red-800/30 flex items-center gap-1.5 shadow-sm">
             <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-            Quarter Final Scores Integrated
+            Semi Final Scores Integrated
         </span>
     </div>
     
@@ -271,7 +271,7 @@
 <script>
     const ADMIN_PASSWORD = "1234";
     let isAdminAuthenticated = false;
-    let currentActiveRound = 2; // Default to Quarter Final View (Index 2)
+    let currentActiveRound = 3; // Default to Semi Final View (Index 3)
     let tournamentData = {};
 
     const initialPlayers = [
@@ -345,21 +345,27 @@
         // Round of 16 Results
         const round16Scores = {
             0: { t1s1: 6, t1s2: 3, t2s1: 6, t2s2: 1 }, // Kavin vs Myan Khun
-            1: { t1s1: 0, t1s2: 1, t2s1: 4, t2s2: 6 }, // Sxine Khant Kyaw vs Dean
+            1: { t1s1: 0, t1s2: 1, t2s1: 4, t2s2: 6 }, // Sexin Khant Kyaw vs Dean
             2: { t1s1: 3, t1s2: 1, t2s1: 3, t2s2: 2 }, // Thein Htike vs P,S,T,W
             3: { t1s1: 2, t1s2: 6, t2s1: 5, t2s2: 2 }, // Zwe vs Min Khant
             4: { t1s1: 1, t1s2: 6, t2s1: 1, t2s2: 5 }, // JP vs Ko Jake
             5: { t1s1: 5, t1s2: 0, t2s1: 5, t2s2: 3 }, // Aung Thiha vs J Ngar
             6: { t1s1: 0, t1s2: 1, t2s1: 5, t2s2: 4 }, // Zayar Hein vs H
-            7: { t1s1: 2, t1s2: 1, t2s1: 2, t2s2: 2 }, // Van Cro vs ッ 光明
+            7: { t1s1: 2, t1s2: 2, t2s1: 2, t2s2: 1 }, // CORRECTED: Van Cro vs ッ 光明 (Van Cro wins AGG 4-3 so he progresses to QF to play H)
         };
 
-        // NEW REQUESTED DATA: Quarter Final Results
+        // Quarter Final Results
         const round8Scores = {
             0: { t1s1: 3, t1s2: 0, t2s1: 8, t2s2: 4 }, // Kavin vs Dean (Dean wins AGG 12-3)
             1: { t1s1: 5, t1s2: 3, t2s1: 4, t2s2: 2 }, // PSTW vs Zwe (PSTW wins AGG 8-6)
             2: { t1s1: 7, t1s2: 3, t2s1: 1, t2s2: 4 }, // JP vs J Ngar (JP wins AGG 10-5)
-            3: { t1s1: 5, t1s2: 4, t2s1: 3, t2s2: 0 }  // H vs Van Cro (Van Cro wins AGG 8-4)
+            3: { t1s1: 5, t1s2: 4, t2s1: 3, t2s2: 0 }  // H vs Van Cro (H wins AGG 9-3, progresses)
+        };
+
+        // Semi Final Results (Dean vs PSTW, JP vs H)
+        const semiFinalScores = {
+            0: { t1s1: 6, t1s2: 5, t2s1: 2, t2s2: 2 }, // Dean vs PSTW (Dean wins Leg 1: 6-2, Leg 2: 5-2. AGG 11-4)
+            1: { t1s1: 3, t1s2: 1, t2s1: 8, t2s2: 4 }  // JP vs H (H wins Leg 1: 4-1 (H 4-1 JP), Leg 2: 4-3 (H 4-3 JP). AGG 8-4)
         };
 
         roundsData.forEach((round, rIdx) => {
@@ -415,7 +421,21 @@
             }
         });
 
-        // Run progression again to calculate Semi Final lineups
+        // Run progression again (QF to SF)
+        recalculateProgression(data);
+
+        // Populate Semi Final preset scores
+        Object.keys(semiFinalScores).forEach(mIdx => {
+            if (data.rounds[3] && data.rounds[3].matches[mIdx]) {
+                const match = data.rounds[3].matches[mIdx];
+                match.t1s1 = semiFinalScores[mIdx].t1s1;
+                match.t1s2 = semiFinalScores[mIdx].t1s2;
+                match.t2s1 = semiFinalScores[mIdx].t2s1;
+                match.t2s2 = semiFinalScores[mIdx].t2s2;
+            }
+        });
+
+        // Run final progression (SF to GF)
         recalculateProgression(data);
 
         return data;
